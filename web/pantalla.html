@@ -87,6 +87,34 @@
   .nota { font-size: 1.9vh; color: var(--tenue); line-height: 1.6; }
   .nota b { color: var(--texto); font-weight: 600; }
 
+  /* Escena compacta para que quepa el grafo */
+  #rompiendo { justify-content: flex-start; gap: 2.4vh; padding-top: 3vh; padding-bottom: 3vh; }
+  #rompiendo .bloque { padding: 2vh 1.8vw; }
+  #rompiendo .ventanilla { width: 6vh; height: 7.4vh; font-size: 4.2vh; }
+  #rompiendo .numero { font-size: 5.6vh; }
+
+  /* ---------- Menú de Turing ---------- */
+  .menu { flex: 1; display: flex; gap: 2.4vw; min-height: 0; }
+  .grafo { flex: 1.5; min-height: 0; position: relative; }
+  .grafo svg { width: 100%; height: 100%; display: block; }
+  .explica { flex: 1; display: flex; flex-direction: column; gap: 1.6vh; }
+  .cifras { display: flex; gap: 2.4vw; font-size: 1.8vh; color: var(--tenue); }
+  .cifras b { display: block; font-family: var(--maquina); font-weight: 400; font-size: 4.4vh; color: var(--texto); }
+  .cifras .rojo b { color: var(--acento); }
+  #gCicloTxt { font-family: var(--maquina); font-size: 2.6vh; color: var(--acento); min-height: 3vh; letter-spacing: .06em; }
+  .arista { stroke: #6d6255; stroke-width: 2; fill: none; opacity: 0; transition: opacity .35s, stroke .4s, stroke-width .4s; }
+  .arista.ver { opacity: 1; }
+  .arista.ciclo { stroke: var(--acento); stroke-width: 3.5; }
+  .etiqueta { opacity: 0; transition: opacity .35s; }
+  .etiqueta.ver { opacity: 1; }
+  .etiqueta circle { fill: var(--cuerpo); stroke: #6d6255; }
+  .etiqueta.ciclo circle { stroke: var(--acento); }
+  .etiqueta text { fill: var(--tenue); font: 600 11px var(--mono); text-anchor: middle; dominant-baseline: central; }
+  .nodo circle { fill: var(--papel); stroke: #000; stroke-width: 1.5; transition: fill .4s; }
+  .nodo text { fill: var(--tinta); font: 20px var(--maquina); text-anchor: middle; dominant-baseline: central; }
+  .nodo.ciclo circle { fill: #f3c9c4; }
+  .nodo.prueba circle { stroke: var(--ambar); stroke-width: 4; }
+
   /* Alineación crib / cifrado: ninguna letra se cifra a sí misma */
   .alineacion { display: grid; grid-auto-flow: column; gap: .5vw; justify-content: start; margin-top: 1.6vh; }
   .par { display: grid; gap: .5vh; text-align: center; font-family: var(--maquina); font-size: 3vh; }
@@ -100,6 +128,8 @@
   .clave .bloque { flex: none; }
   .clave .valor { font-family: var(--maquina); font-size: 5vh; letter-spacing: .25em; }
   .claro { font-size: 5.4vh; }
+  #resCables { font-size: 3.6vh; letter-spacing: .12em; white-space: nowrap; }
+  .clave { flex-wrap: wrap; }
   .claro .crib { background: none; border: none; color: #8f8573; }
   .datos { display: flex; gap: 4vw; font-size: 2vh; color: var(--tenue); }
   .datos b { color: var(--texto); font-size: 3.2vh; display: block; font-family: var(--maquina); font-weight: 400; }
@@ -151,15 +181,26 @@
         <div class="rotulo">Configuraciones revisadas</div>
         <div class="numero"><span id="probadas">0</span> <span class="de">de <span id="total">1 054 560</span></span></div>
         <div class="barra"><i id="barra"></i></div>
-        <div class="nota">Cada configuración se pone a prueba con el encabezado conocido
-          <b id="cribTxt">FERIABEADRAGON</b>. Si la primera letra no coincide, se descarta al instante:
-          así cae el <b>96 %</b> de las equivocadas.</div>
+        <div class="nota">En cada posición de los rotores, la Bombe supone con qué letra está conectada
+          la <b id="pruebaTxt">letra de prueba</b> en el clavijero (26 hipótesis) y la hace dar la vuelta a un ciclo del menú.
+          Si no vuelve a sí misma, la hipótesis se contradice y se descarta. Encabezado conocido: <b id="cribTxt"></b>.</div>
       </div>
     </div>
-    <div class="bloque">
-      <div class="rotulo">El punto de apoyo: lo que sabemos vs. lo que interceptamos</div>
-      <div class="alineacion" id="alineacion"></div>
-      <div class="nota" style="margin-top: 1.4vh">Ninguna letra se cifra como ella misma: una debilidad de diseño de Enigma que Bletchley Park usaba para ubicar el crib.</div>
+    <div class="bloque menu">
+      <div class="grafo"><svg id="grafo" viewBox="0 0 800 400" preserveAspectRatio="xMidYMid meet"></svg></div>
+      <div class="explica">
+        <div class="rotulo">El menú de Turing de este mensaje</div>
+        <div class="nota">Cada letra del encabezado se une con la letra en que se convirtió; el número es su posición.
+          Cuando las uniones cierran un <b>ciclo</b>, una suposición falsa sobre el clavijero se contradice a sí misma al recorrerlo:
+          así descartaba claves la Bombe de 1940.</div>
+        <div class="cifras">
+          <div><b id="gLetras">0</b>letras</div>
+          <div><b id="gAristas">0</b>conexiones</div>
+          <div class="rojo"><b id="gCiclos">0</b>ciclos</div>
+        </div>
+        <div id="gCicloTxt"></div>
+        <div class="nota" style="font-size: 1.6vh">Letra con borde amarillo: la letra de prueba, donde empiezan las hipótesis sobre el clavijero.</div>
+      </div>
     </div>
   </section>
 
@@ -171,11 +212,14 @@
     <div class="clave">
       <div class="bloque"><div class="rotulo">Rotores</div><div class="valor" id="resRotores"></div></div>
       <div class="bloque"><div class="rotulo">Posición inicial</div><div class="valor" id="resPos"></div></div>
+      <div class="bloque"><div class="rotulo">Clavijero</div><div class="valor" id="resCables"></div></div>
     </div>
     <div class="datos">
       <div><b id="resMs"></b>tiempo real de cómputo</div>
-      <div><b id="resProb"></b>configuraciones revisadas</div>
-      <div><b id="resCand"></b>candidatas finales</div>
+      <div><b id="resProb"></b>hipótesis probadas</div>
+      <div><b id="resHip"></b>pasaron el primer ciclo</div>
+      <div><b id="resProp"></b>sin contradicciones</div>
+      <div><b id="resCand"></b>clave final</div>
     </div>
   </section>
 
@@ -224,12 +268,148 @@ function pintarConCrib(texto, crib) {
   return html;
 }
 
+// =====================================================================
+// Menú de Turing: grafo entre letras del crib y del cifrado
+// =====================================================================
+function construirMenu(crib, cifrado) {
+  const aristas = [...crib].map((a, i) => ({ a, b: cifrado[i], pos: i + 1 }));
+  const nodos = [...new Set(aristas.flatMap((e) => [e.a, e.b]))];
+
+  // Árbol generador con unión-búsqueda: cada arista que une dos letras
+  // ya conectadas cierra un ciclo (ciclos independientes = aristas − nodos + componentes).
+  const padre = Object.fromEntries(nodos.map((n) => [n, n]));
+  const raiz = (x) => (padre[x] === x ? x : (padre[x] = raiz(padre[x])));
+  const arbol = Object.fromEntries(nodos.map((n) => [n, []]));
+  const ciclos = [];
+  for (const e of aristas) {
+    const ra = raiz(e.a), rb = raiz(e.b);
+    if (ra !== rb) {
+      padre[ra] = rb;
+      arbol[e.a].push([e.b, e]);
+      arbol[e.b].push([e.a, e]);
+    } else {
+      ciclos.push(cicloDe(e, arbol));
+    }
+  }
+  const grado = Object.fromEntries(nodos.map((n) => [n, 0]));
+  aristas.forEach((e) => { grado[e.a]++; grado[e.b]++; });
+  const prueba = nodos.reduce((m, n) => (grado[n] > grado[m] ? n : m), nodos[0]);
+  return { nodos, aristas, ciclos, prueba };
+}
+
+// Camino dentro del árbol entre los extremos de `e` (BFS) + la propia arista = el ciclo.
+function cicloDe(e, arbol) {
+  const previo = { [e.a]: null }, cola = [e.a];
+  while (cola.length) {
+    const x = cola.shift();
+    if (x === e.b) break;
+    for (const [y, arista] of arbol[x]) if (!(y in previo)) { previo[y] = [x, arista]; cola.push(y); }
+  }
+  const letras = [e.b], aristas = [e];
+  for (let x = e.b; previo[x]; x = previo[x][0]) { aristas.push(previo[x][1]); letras.push(previo[x][0]); }
+  letras.reverse();
+  return { letras, aristas };
+}
+
+// Disposición por fuerzas (determinista): las letras se repelen y las conexiones las atraen.
+function disponer(nodos, aristas, W, H) {
+  const p = {};
+  nodos.forEach((n, i) => {
+    const t = (2 * Math.PI * i) / nodos.length;
+    p[n] = { x: W / 2 + (W / 3) * Math.cos(t), y: H / 2 + (H / 3) * Math.sin(t) };
+  });
+  const k = Math.sqrt((W * H) / nodos.length) * 0.7, VUELTAS = 400;
+  for (let it = 0; it < VUELTAS; it++) {
+    const d = Object.fromEntries(nodos.map((n) => [n, { x: 0, y: 0 }]));
+    for (let i = 0; i < nodos.length; i++) for (let j = i + 1; j < nodos.length; j++) {
+      const a = nodos[i], b = nodos[j];
+      let dx = p[a].x - p[b].x, dy = p[a].y - p[b].y;
+      const dist = Math.max(Math.hypot(dx, dy), 0.01);
+      if (dist > 2.5 * k) continue;                 // las letras lejanas ya no se empujan
+      const f = (k * k) / dist;
+      dx /= dist; dy /= dist;
+      d[a].x += dx * f; d[a].y += dy * f; d[b].x -= dx * f; d[b].y -= dy * f;
+    }
+    for (const { a, b } of aristas) {
+      let dx = p[a].x - p[b].x, dy = p[a].y - p[b].y;
+      const dist = Math.max(Math.hypot(dx, dy), 0.01), f = (dist * dist) / k;
+      dx /= dist; dy /= dist;
+      d[a].x -= dx * f; d[a].y -= dy * f; d[b].x += dx * f; d[b].y += dy * f;
+    }
+    const temp = (W / 8) * (1 - it / VUELTAS);
+    for (const n of nodos) {
+      d[n].x += (W / 2 - p[n].x) * 0.6; d[n].y += (H / 2 - p[n].y) * 0.6;     // gravedad: nada se escapa
+      const m = Math.max(Math.hypot(d[n].x, d[n].y), 0.01);
+      p[n].x += (d[n].x / m) * Math.min(m, temp);
+      p[n].y += (d[n].y / m) * Math.min(m, temp);
+    }
+  }
+  // Encajar en el recuadro
+  const xs = nodos.map((n) => p[n].x), ys = nodos.map((n) => p[n].y), M = 32;
+  const [x0, x1, y0, y1] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
+  const e = Math.min((W - 2 * M) / (x1 - x0 || 1), (H - 2 * M) / (y1 - y0 || 1));
+  for (const n of nodos) {
+    p[n].x = W / 2 + (p[n].x - (x0 + x1) / 2) * e;
+    p[n].y = H / 2 + (p[n].y - (y0 + y1) / 2) * e;
+  }
+  return p;
+}
+
+function dibujarMenu(menu, letraPrueba) {
+  if (letraPrueba && menu.nodos.includes(letraPrueba)) menu.prueba = letraPrueba;
+  const W = 800, H = 400, p = disponer(menu.nodos, menu.aristas, W, H);
+  // Aristas paralelas (mismo par de letras en dos posiciones) se curvan hacia lados distintos.
+  const pares = {};
+  const svgAristas = menu.aristas.map((e, i) => {
+    const clave = [e.a, e.b].sort().join("");
+    const n = (pares[clave] = (pares[clave] ?? -1) + 1);
+    const A = p[e.a], B = p[e.b];
+    const mx = (A.x + B.x) / 2, my = (A.y + B.y) / 2;
+    const len = Math.hypot(B.x - A.x, B.y - A.y) || 1;
+    const curva = n === 0 ? 0 : (n % 2 ? 1 : -1) * Math.ceil(n / 2) * 34;
+    const sentido = e.a < e.b ? 1 : -1;
+    const cx = mx + (-(B.y - A.y) / len) * curva * sentido, cy = my + ((B.x - A.x) / len) * curva * sentido;
+    const lx = (mx + cx) / 2, ly = (my + cy) / 2;   // punto medio de la curva cuadrática
+    return `<path class="arista" id="ar${i}" d="M${A.x} ${A.y} Q${cx} ${cy} ${B.x} ${B.y}"/>
+            <g class="etiqueta" id="et${i}"><circle cx="${lx}" cy="${ly}" r="11"/><text x="${lx}" y="${ly}">${e.pos}</text></g>`;
+  }).join("");
+  const svgNodos = menu.nodos.map((n) =>
+    `<g class="nodo ${n === menu.prueba ? "prueba" : ""}" id="no${n}"><circle cx="${p[n].x}" cy="${p[n].y}" r="19"/><text x="${p[n].x}" y="${p[n].y + 1}">${n}</text></g>`).join("");
+  $("grafo").innerHTML = svgAristas + svgNodos;
+  $("gLetras").textContent = menu.nodos.length;
+  $("gAristas").textContent = 0;
+  $("gCiclos").textContent = 0;
+  $("gCicloTxt").textContent = "";
+}
+
+function mostrarArista(menu, i) {
+  $("ar" + i).classList.add("ver");
+  $("et" + i).classList.add("ver");
+  $("gAristas").textContent = i + 1;
+}
+
+function resaltarCiclos(menu) {
+  menu.ciclos.forEach((c) => c.aristas.forEach((e) => {
+    const i = menu.aristas.indexOf(e);
+    $("ar" + i).classList.add("ciclo");
+    $("et" + i).classList.add("ciclo");
+    c.letras.forEach((l) => $("no" + l).classList.add("ciclo"));
+  }));
+  $("gCiclos").textContent = menu.ciclos.length;
+  const c = menu.ciclos[0];
+  $("gCicloTxt").textContent = c
+    ? "Ciclo: " + [...c.letras, c.letras[0]].join(" → ")
+    : "Sin ciclos: con cables en el clavijero, este sería un mensaje difícil para la Bombe.";
+}
+
 // La animación dura al menos `minimo` ms y termina cuando el servidor tenga el resultado.
-async function animarBombe(cifrado, crib, total, listo, minimo = 6500) {
+async function animarBombe(cifrado, crib, total, listo, letraPrueba, minimo = 11000) {
   $("cribTxt").textContent = crib;
+  $("pruebaTxt").textContent = "letra de prueba " + (letraPrueba || "");
   $("total").textContent = miles(total);
-  $("alineacion").innerHTML = [...crib].map((c, i) =>
-    `<div class="par"><span>${c}</span><i></i><span>${cifrado[i]}</span></div>`).join("");
+  const menu = construirMenu(crib, cifrado);
+  dibujarMenu(menu, letraPrueba);
+  let aristasVistas = 0, ciclosVistos = false;
 
   const t0 = performance.now();
   let terminado = false;
@@ -245,7 +425,12 @@ async function animarBombe(cifrado, crib, total, listo, minimo = 6500) {
     const orden = ORDENES[Math.min(Math.floor((n / total) * 60), 59)];
     $("ordenActual").textContent = orden.join(" · ");
     for (let i = 0; i < 3; i++) $("v" + i).textContent = LETRAS[Math.floor(Math.random() * 26)];
-    if (fraccion >= 1) break;
+    // El menú se arma de a una conexión y luego se encienden los ciclos.
+    while (aristasVistas < menu.aristas.length && t > 300 + aristasVistas * 260) mostrarArista(menu, aristasVistas++);
+    if (!ciclosVistos && aristasVistas === menu.aristas.length && t > 900 + menu.aristas.length * 260) {
+      resaltarCiclos(menu); ciclosVistos = true;
+    }
+    if (fraccion >= 1 && ciclosVistos) break;
     await esperar(60);
   }
 }
@@ -256,8 +441,12 @@ function pintarResultado(r, crib) {
   $("resRotores").textContent = c.rotores.join(" · ");
   $("resPos").textContent = [...c.posiciones].join(" ");
   $("resMs").textContent = r.ms < 1000 ? `${r.ms} ms` : `${(r.ms / 1000).toFixed(1)} s`;
-  $("resProb").textContent = miles(r.probadas);
-  $("resCand").textContent = r.candidatas.length;
+  $("resProb").textContent = miles(r.estadisticas?.hipotesis ?? r.probadas);
+  $("resProp").textContent = r.estadisticas ? miles(r.estadisticas.trasPropagacion) : "—";
+  $("resCables").textContent = c.clavijero ? c.clavijero.split(" ").map((p) => p[0] + "↔" + p[1]).join("  ") : "sin cables";
+  $("resHip").textContent = r.estadisticas ? miles(r.estadisticas.trasCiclo) : "—";
+  // Claves equivalentes por el doble paso descifran igual: se cuentan como una.
+  $("resCand").textContent = new Set(r.candidatas.map((x) => x.mensaje)).size;
 }
 
 // ---------- Ciclo principal: preguntarle al servidor cada medio segundo ----------
@@ -298,7 +487,7 @@ async function correr(e) {
   await esperar(1200);
 
   mostrar("rompiendo");
-  await animarBombe(e.cifrado, e.crib, 60 * 17576, listo);
+  await animarBombe(e.cifrado, e.crib, 60 * 17576, listo, e.letraPrueba);
   await listo;
 
   const final = ultimoEstado;

@@ -16,7 +16,8 @@ import { fileURLToPath } from "node:url";
 import path from "node:path";
 
 import { Enigma } from "../web/enigma.js";
-import { romper, CRIB, TOTAL_CONFIGURACIONES } from "../bombe/bombe.js";
+import { CRIB } from "../bombe/bombe.js";
+import { romper, letraDePrueba } from "../bombe/bombe2.js";   // v2: con clavijero
 
 const PUERTO = Number(process.env.PORT) || 8080;
 const RAIZ_WEB = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../web");
@@ -39,18 +40,16 @@ let rotosHoy = 0;
 
 function interceptar(cifrado) {
   const id = estado.id + 1;
-  estado = { id, fase: "rompiendo", cifrado, crib: CRIB, recibido: Date.now() };
+  estado = { id, fase: "rompiendo", cifrado, crib: CRIB, letraPrueba: letraDePrueba(CRIB, cifrado), recibido: Date.now() };
 
   // Se responde al celular primero y la Bombe corre justo después,
   // así el celular no se queda colgado mientras se rompe el mensaje.
   setImmediate(() => {
     const t0 = performance.now();
-    let candidatas;
+    let candidatas, estadisticas, menu;
     try {
-      candidatas = romper(cifrado, CRIB).map((c) => ({
-        ...c,
-        mensaje: new Enigma({ rotores: c.rotores, posiciones: c.posiciones }).procesar(cifrado),
-      }));
+      ({ candidatas, estadisticas, menu } = romper(cifrado, CRIB));
+      candidatas = candidatas.map((c) => ({ ...c, mensaje: new Enigma(c).procesar(cifrado) }));
     } catch (e) {
       console.error("La Bombe falló:", e);
       estado = { ...estado, fase: "error", error: String(e.message || e) };
@@ -61,13 +60,13 @@ function interceptar(cifrado) {
     estado = {
       ...estado,
       fase: "listo",
-      resultado: { candidatas, ms: Math.round(ms), probadas: TOTAL_CONFIGURACIONES },
+      resultado: { candidatas, ms: Math.round(ms), probadas: estadisticas.total, estadisticas, menu },
       rotosHoy,
     };
     const c = candidatas[0];
     console.log(
       c
-        ? `  ✔ Roto en ${Math.round(ms)} ms → ${c.rotores.join("-")} ${c.posiciones}: ${c.mensaje}`
+        ? `  ✔ Roto en ${Math.round(ms)} ms → ${c.rotores.join("-")} ${c.posiciones} [${c.clavijero || "sin cables"}]: ${c.mensaje}`
         : `  ✘ Sin candidatas (${Math.round(ms)} ms)`
     );
   });
@@ -146,7 +145,7 @@ function direccionesLocales() {
     .map((i) => i.address);
 }
 
-servidor.listen(PUERTO, () => {
+servidor.listen(PUERTO, "0.0.0.0", () => {
   console.log("\n  ULTRA está escuchando\n");
   console.log(`  Pantalla de la laptop:  http://localhost:${PUERTO}/pantalla.html`);
   const ips = direccionesLocales();

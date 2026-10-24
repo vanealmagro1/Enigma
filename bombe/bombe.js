@@ -2,7 +2,7 @@ import { Enigma } from "../web/enigma.js";
 
 // Crib: el encabezado fijo con el que empieza todo mensaje.
 // El celular lo pide al servidor, así hay una sola fuente de verdad.
-export const CRIB = "FERIABEADRAGON";
+export const CRIB = "FERIABEADRAGONENLAUSFQ";   // largo: así el menú casi siempre tiene ciclos
 const ROTORES = ["I", "II", "III", "IV", "V"];
 
 // ---------- Los 60 órdenes de rotores ----------
