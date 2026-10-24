@@ -222,7 +222,7 @@
       <div class="rotores" id="ruedas" style="margin-top: 12px"></div>
     </div>
 
-    <div class="tarjeta">
+    <div class="tarjeta" id="tarjetaClavijero">
       <h2>2 · Clavijero</h2>
       <p>Toca dos letras para unirlas con un cable (hasta 4). Toca una conectada para quitarla.</p>
       <div class="clavijero" id="clavijero"></div>
@@ -241,7 +241,7 @@
     <div class="ventanas" id="ventanas"></div>
 
     <div>
-      <div class="cinta" id="cinta"><span class="vacio">Tu mensaje debe empezar con HOLA</span></div>
+      <div class="cinta" id="cinta"><span class="vacio">La máquina escribirá el encabezado oficial…</span></div>
       <div class="claro" id="claro"></div>
     </div>
 
@@ -261,7 +261,7 @@
     <div class="tarjeta sello">
       <div class="icono">📡</div>
       <h2>MENSAJE INTERCEPTADO</h2>
-      <p>Solo viajaron las letras cifradas. Mira la pantalla: ULTRA está intentando descubrir tu clave.</p>
+      <p>Solo viajaron las letras cifradas: tu clave nunca salió del celular. Mira la pantalla grande: ULTRA va a intentar descubrirla.</p>
       <div class="cinta" id="cintaFinal"></div>
     </div>
     <div class="empuje">
@@ -276,11 +276,12 @@
 import { Enigma } from "./enigma.js";
 
 // ----- Configuración de la demo -----
-const CRIB = "HOLA";                 // palabra fija al inicio del mensaje
+let CRIB = "FERIABEADRAGON";         // encabezado fijo; el servidor dice cuál es (GET /api/config)
+const CON_CABLES = false;            // la Bombe v1 no ataca el clavijero: sin cables en la demo
 const ROTORES_DISP = ["I", "II", "III", "IV", "V"];
 const LETRAS = [..."ABCDEFGHIJKLMNOPQRSTUVWXYZ"];
 const MAX_CABLES = 4;
-const MIN_LETRAS = CRIB.length + 4;  // mensaje mínimo para transmitir
+const MIN_MENSAJE = 3;               // letras mínimas del mensaje secreto (sin contar el encabezado)
 const FILAS = ["QWERTZUIO", "ASDFGHJK", "PYXCVBNML"];  // distribución real de la Enigma
 const COLORES_CABLE = ["#d0453a", "#4a8fe0", "#6fb35a", "#e0a83a"];
 
@@ -510,7 +511,9 @@ function claveAlAzar() {
     t.fijar(k, { vueltas: 1 });                 // que se vea girar
   });
   const letras = [...LETRAS].sort(() => Math.random() - .5);
-  clave.cables = [0, 1, 2].map((k) => ({ a: letras[2 * k], b: letras[2 * k + 1], color: COLORES_CABLE[k] }));
+  clave.cables = CON_CABLES
+    ? [0, 1, 2].map((k) => ({ a: letras[2 * k], b: letras[2 * k + 1], color: COLORES_CABLE[k] }))
+    : [];
   seleccion = null;
   vibrar([10, 40, 10]);
   actualizarClavijero();
@@ -550,18 +553,17 @@ function pintarTablero() {
 
 let lamparaActiva = null, teclaActiva = null;
 
+let escribiendoCrib = false;
+
+// Lo que toca el visitante. Mientras la máquina escribe el encabezado, el teclado no responde.
 function presionar(tecla) {
+  if (escribiendoCrib) return;
+  pulsar(tecla);
+}
+
+function pulsar(tecla) {
   if (lamparaActiva) soltar();
   const letra = tecla.dataset.l;
-
-  // El mensaje tiene que empezar con el crib; la Enigma no tiene "borrar".
-  if (claro.length < CRIB.length && letra !== CRIB[claro.length]) {
-    tecla.classList.remove("bloqueada"); void tecla.offsetWidth; tecla.classList.add("bloqueada");
-    setTimeout(() => tecla.classList.remove("bloqueada"), 300);
-    avisar(`Empieza con ${CRIB}: ahora toca la ${CRIB[claro.length]}`, true);
-    vibrar(60);
-    return;
-  }
 
   const antes = maquina.posiciones();
   const luz = maquina.pulsarTecla(letra);       // los rotores avanzan ANTES de cerrar el circuito
@@ -584,13 +586,15 @@ function soltar() {
 function actualizarCinta() {
   $("cinta").innerHTML = cifrado
     ? cifrado.match(/.{1,5}/g).join(" ")             // grupos de 5, como el tráfico real
-    : `<span class="vacio">Tu mensaje debe empezar con ${CRIB}</span>`;
+    : `<span class="vacio">La máquina escribirá el encabezado oficial…</span>`;
   $("claro").innerHTML = claro
     ? `Tu texto: <b>${claro.slice(0, CRIB.length)}</b>${claro.slice(CRIB.length)}`
     : "";
-  const faltan = MIN_LETRAS - claro.length;
-  $("btnEnviar").disabled = faltan > 0;
-  avisar(claro.length < CRIB.length ? `Escribe ${CRIB} para empezar`
+  const mensaje = Math.max(0, claro.length - CRIB.length);
+  const faltan = MIN_MENSAJE - mensaje;
+  $("btnEnviar").disabled = escribiendoCrib || faltan > 0;
+  avisar(escribiendoCrib ? "Escribiendo el encabezado oficial…"
+       : mensaje === 0 ? "Ahora escribe tu mensaje secreto"
        : faltan > 0 ? `Sigue escribiendo… (mínimo ${faltan} letras más)`
        : "Cuando termines, toca Transmitir");
 }
@@ -600,24 +604,64 @@ function avisar(texto, mal = false) {
   $("aviso").classList.toggle("mal", mal);
 }
 
+let turnoCrib = 0;
+
 function reiniciarMaquina() {
   maquina = new Enigma(claveActual());
   claro = ""; cifrado = "";
   [...maquina.posiciones()].forEach((l, i) => ventanasT[i].fijar(LETRAS.indexOf(l)));
+  escribirCrib();
+}
+
+// Como los operadores alemanes: todo mensaje empieza con el mismo encabezado.
+// La máquina lo teclea sola, con sus lámparas y rotores, y luego le toca al visitante.
+async function escribirCrib() {
+  const turno = ++turnoCrib;                  // si alguien reinicia a medias, la vuelta vieja se detiene
+  escribiendoCrib = true;
+  actualizarCinta();
+  await esperar(450);
+  for (const letra of CRIB) {
+    if (turno !== turnoCrib) return;
+    pulsar(document.querySelector(`.tecla[data-l="${letra}"]`));
+    await esperar(110);
+    soltar();
+    await esperar(60);
+  }
+  if (turno !== turnoCrib) return;
+  escribiendoCrib = false;
   actualizarCinta();
 }
+
+const esperar = (ms) => new Promise((ok) => setTimeout(ok, ms));
 
 $("btnBorrar").onclick = reiniciarMaquina;
 $("btnEnviar").onclick = transmitir;
 
 // =====================================================================
 // Paso 3: transmitir
-// Contrato: el celular SOLO manda el texto cifrado y el crib. La clave nunca sale del teléfono.
+// Contrato: el celular SOLO manda el texto cifrado. La clave nunca sale del teléfono.
 // =====================================================================
-function transmitir() {
-  const mensaje = { tipo: "interceptado", cifrado, crib: CRIB };
-  if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify(mensaje));
-  else console.warn("Sin servidor; mensaje que se habría enviado: " + JSON.stringify(mensaje));
+async function transmitir() {
+  if (location.protocol === "file:") {
+    console.warn("Sin servidor; se habría enviado: " + JSON.stringify({ cifrado }));
+  } else {
+    $("btnEnviar").disabled = true;
+    avisar("Transmitiendo…");
+    try {
+      const r = await fetch("/api/interceptar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cifrado }),
+      });
+      if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || r.status);
+      estado(true, "conectado");
+    } catch (e) {
+      estado(false, "sin conexión");
+      avisar("No llegó a la laptop. Revisa el wifi y toca Transmitir otra vez.", true);
+      $("btnEnviar").disabled = false;
+      return;
+    }
+  }
   $("cintaFinal").textContent = cifrado.match(/.{1,5}/g).join(" ");
   irA(3);
 }
@@ -631,15 +675,18 @@ function irA(n) {
   if (n === 1) requestAnimationFrame(dibujarCables);
 }
 
-// ----- WebSocket al servidor de la laptop -----
-let ws = null;
-function conectar() {
+// ----- Conexión con la laptop -----
+async function conectar() {
   if (location.protocol === "file:") { estado(false, "sin servidor (modo local)"); return; }
-  const proto = location.protocol === "https:" ? "wss" : "ws";
-  ws = new WebSocket(`${proto}://${location.host}/ws/celular`);
-  ws.onopen = () => estado(true, "conectado");
-  ws.onclose = () => { estado(false, "reconectando…"); setTimeout(conectar, 2000); };
-  ws.onerror = () => ws.close();
+  try {
+    const r = await fetch("/api/config", { cache: "no-store" });
+    const cfg = await r.json();
+    if (/^[A-Z]+$/.test(cfg.crib || "")) CRIB = cfg.crib;
+    estado(true, "conectado");
+  } catch {
+    estado(false, "reconectando…");
+    setTimeout(conectar, 2000);
+  }
 }
 function estado(ok, txt) { $("estado").innerHTML = `Servidor: <b class="${ok ? "" : "no"}">${txt}</b>`; }
 
@@ -653,6 +700,7 @@ window.addEventListener("resize", dibujarCables);
 document.fonts?.ready.then(dibujarCables);
 document.addEventListener("contextmenu", (e) => { if (e.target.closest(".tecla, .tambor")) e.preventDefault(); });
 
+if (!CON_CABLES) $("tarjetaClavijero").hidden = true;
 pintarClavijero();
 actualizarClavijero();
 pintarTablero();

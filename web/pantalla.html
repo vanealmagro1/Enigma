@@ -1,11 +1,324 @@
 <!doctype html>
 <html lang="es">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Enigma — Pantalla</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ULTRA · Pantalla</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Special+Elite&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --cuerpo: #16130f;
+    --panel: #1f1a15;
+    --borde: #3a3128;
+    --papel: #efe6d2;
+    --tinta: #1b1814;
+    --texto: #e9dfca;
+    --tenue: #9a8c78;
+    --acento: #c8372d;
+    --ok: #7fb069;
+    --ambar: #ffc847;
+    --maquina: "Special Elite", "Courier New", monospace;
+    --mono: "IBM Plex Mono", ui-monospace, "Consolas", monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: var(--cuerpo); color: var(--texto); font-family: var(--mono);
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+
+  header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 2.2vh 4vw; border-bottom: 1px solid var(--borde);
+  }
+  .logo { font-family: var(--maquina); font-size: 4.2vh; letter-spacing: .3em; }
+  .logo span { color: var(--acento); }
+  .sub { color: var(--tenue); font-size: 1.6vh; letter-spacing: .15em; text-transform: uppercase; }
+  .derecha { text-align: right; font-size: 1.7vh; color: var(--tenue); line-height: 1.6; }
+  .derecha b { color: var(--texto); font-weight: 600; }
+  .punto { display: inline-block; width: .8em; height: .8em; border-radius: 50%; background: var(--ok); margin-right: .4em; vertical-align: -.05em; }
+  .punto.no { background: var(--acento); }
+
+  main { flex: 1; position: relative; }
+  .escena {
+    position: absolute; inset: 0; padding: 4vh 6vw;
+    display: flex; flex-direction: column; justify-content: center; gap: 3.5vh;
+    opacity: 0; pointer-events: none; transition: opacity .5s;
+  }
+  .escena.activa { opacity: 1; pointer-events: auto; }
+  .rotulo { font-size: 1.9vh; letter-spacing: .3em; text-transform: uppercase; color: var(--tenue); }
+  .rotulo.rojo { color: var(--acento); }
+
+  /* ---------- Esperando ---------- */
+  #esperando { align-items: center; text-align: center; }
+  #esperando h1 { font-family: var(--maquina); font-weight: 400; font-size: 7vh; letter-spacing: .12em; margin: 0; }
+  .cursor { display: inline-block; width: .55em; height: .9em; background: var(--texto); vertical-align: -.08em; animation: parpadeo 1s steps(1) infinite; }
+  @keyframes parpadeo { 50% { opacity: 0; } }
+  #esperando p { font-size: 2.4vh; color: var(--tenue); max-width: 60ch; margin: 0; line-height: 1.6; }
+  .url { font-size: 3vh; color: var(--ambar); letter-spacing: .05em; }
+  .contador { font-size: 1.8vh; color: var(--tenue); }
+
+  /* ---------- Cinta de papel ---------- */
+  .cinta {
+    background: var(--papel); color: var(--tinta); border-radius: .6vh;
+    padding: 2.4vh 2.6vw; font-family: var(--maquina); font-size: 4.6vh; letter-spacing: .14em; line-height: 1.5;
+    box-shadow: 0 1vh 3vh rgba(0,0,0,.5);
+    min-height: 10vh; word-break: break-all;
+  }
+  .cinta .crib { background: rgba(200,55,45,.18); border-bottom: .4vh solid var(--acento); }
+
+  /* ---------- Rompiendo ---------- */
+  .fila { display: flex; gap: 4vw; align-items: stretch; }
+  .bloque { flex: 1; background: var(--panel); border: 1px solid var(--borde); border-radius: 1.2vh; padding: 2.6vh 2vw; }
+  .ventanas { display: flex; gap: 1.4vw; justify-content: center; margin: 1.5vh 0 1vh; }
+  .ventanilla {
+    width: 7vh; height: 9vh; display: grid; place-items: center;
+    background: linear-gradient(#3b342b, #b8ad97 20%, #fbf6ea 50%, #b8ad97 80%, #3b342b);
+    border: 1px solid #000; border-radius: .6vh; color: var(--tinta);
+    font-family: var(--maquina); font-size: 5vh;
+  }
+  .orden { text-align: center; font-size: 2.4vh; letter-spacing: .2em; color: var(--tenue); }
+  .orden b { color: var(--texto); }
+  .numero { font-family: var(--maquina); font-size: 7vh; letter-spacing: .04em; font-variant-numeric: tabular-nums; }
+  .de { color: var(--tenue); font-size: 2vh; }
+  .barra { height: 1.2vh; background: #0d0b09; border-radius: 1vh; overflow: hidden; margin: 1.6vh 0; }
+  .barra i { display: block; height: 100%; width: 0; background: var(--acento); }
+  .nota { font-size: 1.9vh; color: var(--tenue); line-height: 1.6; }
+  .nota b { color: var(--texto); font-weight: 600; }
+
+  /* Alineación crib / cifrado: ninguna letra se cifra a sí misma */
+  .alineacion { display: grid; grid-auto-flow: column; gap: .5vw; justify-content: start; margin-top: 1.6vh; }
+  .par { display: grid; gap: .5vh; text-align: center; font-family: var(--maquina); font-size: 3vh; }
+  .par span:first-child { color: var(--ambar); }
+  .par span:last-child { color: var(--texto); }
+  .par i { display: block; height: 1.6vh; border-left: 1px dashed var(--tenue); margin: 0 auto; width: 0; }
+
+  /* ---------- Resultado ---------- */
+  #resultado h1 { font-family: var(--maquina); font-weight: 400; font-size: 5.6vh; letter-spacing: .14em; margin: 0; color: var(--ok); }
+  .clave { display: flex; gap: 4vw; }
+  .clave .bloque { flex: none; }
+  .clave .valor { font-family: var(--maquina); font-size: 5vh; letter-spacing: .25em; }
+  .claro { font-size: 5.4vh; }
+  .claro .crib { background: none; border: none; color: #8f8573; }
+  .datos { display: flex; gap: 4vw; font-size: 2vh; color: var(--tenue); }
+  .datos b { color: var(--texto); font-size: 3.2vh; display: block; font-family: var(--maquina); font-weight: 400; }
+
+  #error h1 { font-family: var(--maquina); font-weight: 400; font-size: 5vh; color: var(--acento); margin: 0; }
+  #error p { font-size: 2.4vh; color: var(--tenue); }
+</style>
 </head>
 <body>
-  <!-- Por hacer: pantalla grande para la laptop -->
+<header>
+  <div>
+    <div class="logo">ULTR<span>A</span></div>
+    <div class="sub">Ataque de Turing–Welchman · Enigma I</div>
+  </div>
+  <div class="derecha">
+    <div><span class="punto no" id="punto"></span><span id="conexion">conectando…</span></div>
+    <div>Mensajes rotos hoy: <b id="rotos">0</b></div>
+  </div>
+</header>
+
+<main>
+  <!-- 1. Esperando -->
+  <section class="escena activa" id="esperando">
+    <div class="rotulo">Estación de escucha</div>
+    <h1>ESPERANDO TRANSMISIÓN<span class="cursor"></span></h1>
+    <p>Escanea el código QR, elige tu clave secreta en el celular y escribe un mensaje.
+       Solo las letras cifradas llegarán aquí. ULTRA intentará descubrir tu clave.</p>
+    <div class="url" id="url"></div>
+  </section>
+
+  <!-- 2. Interceptado -->
+  <section class="escena" id="interceptado">
+    <div class="rotulo rojo">● Transmisión interceptada</div>
+    <div class="cinta" id="cintaInter"></div>
+    <div class="nota">Esto es todo lo que tiene ULTRA: letras sin sentido, en grupos de cinco como el tráfico de 1940.
+      La clave nunca salió del celular.</div>
+  </section>
+
+  <!-- 3. Rompiendo -->
+  <section class="escena" id="rompiendo">
+    <div class="rotulo rojo">● La Bombe está trabajando</div>
+    <div class="fila">
+      <div class="bloque">
+        <div class="rotulo">Probando</div>
+        <div class="ventanas"><div class="ventanilla" id="v0">A</div><div class="ventanilla" id="v1">A</div><div class="ventanilla" id="v2">A</div></div>
+        <div class="orden">Rotores <b id="ordenActual">I · II · III</b></div>
+      </div>
+      <div class="bloque" style="flex: 1.6">
+        <div class="rotulo">Configuraciones revisadas</div>
+        <div class="numero"><span id="probadas">0</span> <span class="de">de <span id="total">1 054 560</span></span></div>
+        <div class="barra"><i id="barra"></i></div>
+        <div class="nota">Cada configuración se pone a prueba con el encabezado conocido
+          <b id="cribTxt">FERIABEADRAGON</b>. Si la primera letra no coincide, se descarta al instante:
+          así cae el <b>96 %</b> de las equivocadas.</div>
+      </div>
+    </div>
+    <div class="bloque">
+      <div class="rotulo">El punto de apoyo: lo que sabemos vs. lo que interceptamos</div>
+      <div class="alineacion" id="alineacion"></div>
+      <div class="nota" style="margin-top: 1.4vh">Ninguna letra se cifra como ella misma: una debilidad de diseño de Enigma que Bletchley Park usaba para ubicar el crib.</div>
+    </div>
+  </section>
+
+  <!-- 4. Resultado -->
+  <section class="escena" id="resultado">
+    <div class="rotulo">Clave encontrada</div>
+    <h1>MENSAJE DESCIFRADO</h1>
+    <div class="cinta claro" id="cintaClaro"></div>
+    <div class="clave">
+      <div class="bloque"><div class="rotulo">Rotores</div><div class="valor" id="resRotores"></div></div>
+      <div class="bloque"><div class="rotulo">Posición inicial</div><div class="valor" id="resPos"></div></div>
+    </div>
+    <div class="datos">
+      <div><b id="resMs"></b>tiempo real de cómputo</div>
+      <div><b id="resProb"></b>configuraciones revisadas</div>
+      <div><b id="resCand"></b>candidatas finales</div>
+    </div>
+  </section>
+
+  <!-- 5. Error -->
+  <section class="escena" id="error">
+    <div class="rotulo rojo">Sin resultado</div>
+    <h1>ULTRA NO ENCONTRÓ LA CLAVE</h1>
+    <p id="errorTxt">Ninguna configuración explica el mensaje. ¿Se usaron cables en el clavijero?</p>
+  </section>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const esperar = (ms) => new Promise((ok) => setTimeout(ok, ms));
+const LETRAS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+const ROTORES = ["I", "II", "III", "IV", "V"];
+const ORDENES = [];
+for (const a of ROTORES) for (const b of ROTORES) for (const c of ROTORES)
+  if (a !== b && a !== c && b !== c) ORDENES.push([a, b, c]);
+
+const miles = (n) => n.toLocaleString("es-EC").replace(/[.,]/g, " ");
+const grupos = (s) => s.match(/.{1,5}/g).join(" ");
+
+function mostrar(id) {
+  document.querySelectorAll(".escena").forEach((e) => e.classList.toggle("activa", e.id === id));
+}
+
+// ---------- Escenas ----------
+async function escribirCinta(el, texto, crib, msPorLetra = 55) {
+  el.innerHTML = "";
+  let hecho = "";
+  for (const ch of texto) {
+    hecho += ch;
+    el.innerHTML = pintarConCrib(hecho, crib);
+    await esperar(msPorLetra);
+  }
+}
+
+// Agrupa de a 5 y resalta las letras que corresponden al crib.
+function pintarConCrib(texto, crib) {
+  let html = "";
+  [...texto].forEach((ch, i) => {
+    if (i && i % 5 === 0) html += " ";
+    html += i < crib.length ? `<span class="crib">${ch}</span>` : ch;
+  });
+  return html;
+}
+
+// La animación dura al menos `minimo` ms y termina cuando el servidor tenga el resultado.
+async function animarBombe(cifrado, crib, total, listo, minimo = 6500) {
+  $("cribTxt").textContent = crib;
+  $("total").textContent = miles(total);
+  $("alineacion").innerHTML = [...crib].map((c, i) =>
+    `<div class="par"><span>${c}</span><i></i><span>${cifrado[i]}</span></div>`).join("");
+
+  const t0 = performance.now();
+  let terminado = false;
+  listo.then(() => (terminado = true));
+
+  while (true) {
+    const t = performance.now() - t0;
+    const u = Math.min(t / minimo, 1);
+    const fraccion = terminado ? u : Math.min(u, 0.97);   // no llega al 100 % hasta que el servidor responda
+    const n = Math.floor(total * (1 - (1 - fraccion) ** 2));
+    $("probadas").textContent = miles(n);
+    $("barra").style.width = (fraccion * 100).toFixed(1) + "%";
+    const orden = ORDENES[Math.min(Math.floor((n / total) * 60), 59)];
+    $("ordenActual").textContent = orden.join(" · ");
+    for (let i = 0; i < 3; i++) $("v" + i).textContent = LETRAS[Math.floor(Math.random() * 26)];
+    if (fraccion >= 1) break;
+    await esperar(60);
+  }
+}
+
+function pintarResultado(r, crib) {
+  const c = r.candidatas[0];
+  $("cintaClaro").innerHTML = `<span class="crib">${c.mensaje.slice(0, crib.length)}</span> ${c.mensaje.slice(crib.length)}`;
+  $("resRotores").textContent = c.rotores.join(" · ");
+  $("resPos").textContent = [...c.posiciones].join(" ");
+  $("resMs").textContent = r.ms < 1000 ? `${r.ms} ms` : `${(r.ms / 1000).toFixed(1)} s`;
+  $("resProb").textContent = miles(r.probadas);
+  $("resCand").textContent = r.candidatas.length;
+}
+
+// ---------- Ciclo principal: preguntarle al servidor cada medio segundo ----------
+let idVisto = null, ocupado = false, ultimoEstado = null;
+let avisarListo = null;
+
+async function preguntar() {
+  try {
+    const r = await fetch("/api/estado", { cache: "no-store" });
+    const e = await r.json();
+    ultimoEstado = e;
+    $("punto").classList.remove("no");
+    $("conexion").textContent = "escuchando";
+    $("rotos").textContent = e.rotosHoy ?? 0;
+    const ip = e.direcciones?.[0];
+    $("url").textContent = ip ? `http://${ip}:${location.port || 80}` : location.origin;
+
+    if (idVisto === null) idVisto = e.id;              // al abrir, no repetir el último mensaje
+    else if (e.id !== idVisto && !ocupado) { idVisto = e.id; correr(e); }
+
+    if (avisarListo && (e.fase === "listo" || e.fase === "error")) { avisarListo(); avisarListo = null; }
+  } catch {
+    $("punto").classList.add("no");
+    $("conexion").textContent = "sin servidor";
+  }
+  setTimeout(preguntar, 500);
+}
+
+async function correr(e) {
+  ocupado = true;
+  const listo = new Promise((ok) => {
+    if (e.fase === "listo" || e.fase === "error") ok();
+    else avisarListo = ok;
+  });
+
+  mostrar("interceptado");
+  await escribirCinta($("cintaInter"), e.cifrado, e.crib);
+  await esperar(1200);
+
+  mostrar("rompiendo");
+  await animarBombe(e.cifrado, e.crib, 60 * 17576, listo);
+  await listo;
+
+  const final = ultimoEstado;
+  if (final.fase === "listo" && final.resultado.candidatas.length) {
+    pintarResultado(final.resultado, final.crib);
+    mostrar("resultado");
+  } else {
+    $("errorTxt").textContent = final.error
+      ? "Error en la Bombe: " + final.error
+      : "Ninguna configuración explica el mensaje. ¿Se usaron cables en el clavijero?";
+    mostrar("error");
+  }
+  ocupado = false;
+
+  // Si llegó otro mensaje mientras se mostraba este, se atiende enseguida.
+  await esperar(400);
+  if (ultimoEstado.id !== idVisto) { idVisto = ultimoEstado.id; correr(ultimoEstado); }
+}
+
+preguntar();
+</script>
 </body>
 </html>

@@ -1,15 +1,11 @@
 import { Enigma } from "../web/enigma.js";
 
-const CRIB = "FERIABEADRAGON";
+// Crib: el encabezado fijo con el que empieza todo mensaje.
+// El celular lo pide al servidor, así hay una sola fuente de verdad.
+export const CRIB = "FERIABEADRAGON";
 const ROTORES = ["I", "II", "III", "IV", "V"];
 
-// ---------- Paso A: un mensaje "secreto" para probar ----------
-// Tú eliges la clave. Sin cables (la v1 no los rompe).
-const secreta = new Enigma({ rotores: ["IV", "I", "V"], posiciones: "QUT" });
-const cifrado = secreta.procesar(CRIB + "NOSVEMOSENLAFERIA");
-console.log("Interceptado:", cifrado);
-
-// ---------- Paso B: los 60 órdenes de rotores ----------
+// ---------- Los 60 órdenes de rotores ----------
 function ordenesDeRotores() {
   const ordenes = [];
   for (const a of ROTORES) {
@@ -21,9 +17,8 @@ function ordenesDeRotores() {
   }
   return ordenes;
 }
-// Prueba: console.log(ordenesDeRotores().length)  → debe dar 60
 
-// ---------- Paso C: las 17 576 posiciones ----------
+// ---------- Las 17 576 posiciones ----------
 function todasLasPosiciones() {
   const posiciones = [];
   for (let i = 0; i < 26; i++) {
@@ -39,10 +34,9 @@ function todasLasPosiciones() {
   }
   return posiciones;
 }
-// Prueba: length → 17576, y el último debe ser "ZZZ"
 
-// ---------- Paso D: la Bombe ----------
-function romper(cifrado, crib) {
+// ---------- La Bombe (v1, sin plugboard) ----------
+export function romper(cifrado, crib) {
   const candidatas = [];
   const inicio = cifrado.slice(0, crib.length);
   const posiciones = todasLasPosiciones();
@@ -61,13 +55,5 @@ function romper(cifrado, crib) {
   return candidatas;
 }
 
-// ---------- Paso E: probarla ----------
-console.time("Bombe");
-const resultado = romper(cifrado, CRIB);
-console.timeEnd("Bombe");
-console.log(resultado);
-
-for (const candidata of resultado) {
-  const m = new Enigma({ rotores: candidata.rotores, posiciones: candidata.posiciones });
-  console.log(candidata, "->", m.procesar(cifrado));
-}
+// Total de configuraciones que revisa romper(): 60 órdenes × 17 576 posiciones
+export const TOTAL_CONFIGURACIONES = 60 * 26 * 26 * 26;
