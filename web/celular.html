@@ -136,6 +136,26 @@
     min-height: 3.3em; word-break: break-all;
   }
   .cinta .vacio { color: #9b8f7c; font-size: .85rem; letter-spacing: 0; }
+  #paso-escribir { gap: 10px; }
+  #paso-escribir .cinta { font-size: 1rem; min-height: 2.4em; padding: 7px 12px; }
+  .encabezado {
+    font-size: .7rem; line-height: 1.45; color: var(--tenue);
+    background: var(--panel); border: 1px dashed var(--borde); border-radius: 8px; padding: 7px 10px;
+  }
+  .encabezado b { color: var(--texto); }
+  .campo .etq { font-size: .6rem; letter-spacing: .14em; text-transform: uppercase; color: var(--tenue); margin-bottom: 3px; }
+  .texto {
+    font-family: "Special Elite", serif; font-size: 1.35rem; letter-spacing: .1em; color: var(--texto);
+    min-height: 1.7em; padding: 0 2px 4px; border-bottom: 2px solid var(--borde); word-break: break-all;
+  }
+  .texto::after { content: ""; display: inline-block; width: .5em; height: 1em; margin-left: 2px; vertical-align: -.12em;
+    background: var(--acento); animation: parpadeo 1s steps(1) infinite; }
+  .texto .vacio { color: #6d6255; font-family: "IBM Plex Mono", monospace; font-size: .85rem; letter-spacing: 0; }
+  @keyframes parpadeo { 50% { opacity: 0; } }
+  .boton.cuadrado { flex: 0 0 54px; padding: 15px 0; }
+  .cifrado-linea { margin-top: 6px; font-size: .78rem; color: var(--tenue); letter-spacing: .12em; min-height: 1.2em; word-break: break-all; }
+  .cifrado-linea span { color: var(--ambar); }
+  #paso-escribir .aviso:empty { display: none; }
   .claro { font-size: .72rem; color: var(--tenue); margin-top: 6px; word-break: break-all; }
   .claro b { color: var(--ok); font-weight: 600; }
 
@@ -217,14 +237,14 @@
   <section class="vista activa" id="paso-clave">
     <div class="tarjeta">
       <h2>1 · Rotores</h2>
-      <p>Gira cada rueda: arriba el rotor, abajo su letra inicial.</p>
+      <p>Gira las ruedas con el dedo.</p>
       <div class="rotores" id="selRotores"></div>
       <div class="rotores" id="ruedas" style="margin-top: 12px"></div>
     </div>
 
     <div class="tarjeta" id="tarjetaClavijero">
       <h2>2 · Clavijero</h2>
-      <p>Toca dos letras para unirlas con un cable (hasta 4). Toca una conectada para quitarla.</p>
+      <p>Toca dos letras para unirlas (máx. 4 cables).</p>
       <div class="clavijero" id="clavijero"></div>
       <div class="resumen" id="resumen"></div>
     </div>
@@ -240,9 +260,10 @@
   <section class="vista" id="paso-escribir">
     <div class="ventanas" id="ventanas"></div>
 
-    <div>
-      <div class="cinta" id="cinta"><span class="vacio">La máquina escribirá el encabezado oficial…</span></div>
-      <div class="claro" id="claro"></div>
+    <div class="campo">
+      <div class="etq">Tu mensaje secreto</div>
+      <div class="texto" id="claro"></div>
+      <div class="cifrado-linea">Cifrado: <span id="cinta"></span></div>
     </div>
 
     <div class="tablero" id="lamparas"></div>
@@ -251,7 +272,8 @@
     <div class="aviso" id="aviso"></div>
 
     <div class="empuje fila-botones">
-      <button class="boton sec" id="btnBorrar">Reiniciar</button>
+      <button class="boton sec cuadrado" id="btnVolver" aria-label="Cambiar la clave">←</button>
+      <button class="boton sec" id="btnBorrar" disabled>⌫ Borrar</button>
       <button class="boton" id="btnEnviar" disabled>Transmitir</button>
     </div>
   </section>
@@ -261,8 +283,9 @@
     <div class="tarjeta sello">
       <div class="icono">📡</div>
       <h2>MENSAJE INTERCEPTADO</h2>
-      <p>Solo viajaron las letras cifradas: tu clave nunca salió del celular. Mira la pantalla grande: ULTRA va a intentar descubrirla.</p>
+      <p>Tu clave nunca salió del celular. Mira la pantalla grande: ULTRA va a intentar descubrirla.</p>
       <div class="cinta" id="cintaFinal"></div>
+      <p style="font-size: .72rem; margin-top: 10px">🔒 Como en 1940, tu mensaje viajó detrás de un encabezado oficial que todos usan. Esa es la pista de ULTRA.</p>
     </div>
     <div class="empuje">
       <button class="boton" id="btnOtro">Cifrar otro mensaje</button>
@@ -531,7 +554,8 @@ const ventanasT = [0, 1, 2].map(() => {
   return new Tambor(el, LETRAS, { alto: 28, interactivo: false });
 });
 
-let maquina = null, claro = "", cifrado = "";
+let maquina = null, claro = "", cifrado = "", cribCifrado = "";
+const MAX_MENSAJE = 60;
 
 function pintarTablero() {
   $("lamparas").innerHTML = FILAS.map((f) =>
@@ -553,11 +577,9 @@ function pintarTablero() {
 
 let lamparaActiva = null, teclaActiva = null;
 
-let escribiendoCrib = false;
-
-// Lo que toca el visitante. Mientras la máquina escribe el encabezado, el teclado no responde.
+// Lo que toca el visitante.
 function presionar(tecla) {
-  if (escribiendoCrib) return;
+  if (claro.length >= MAX_MENSAJE) { avisar(`Máximo ${MAX_MENSAJE} letras: ya puedes transmitir`, true); return; }
   pulsar(tecla);
 }
 
@@ -583,20 +605,15 @@ function soltar() {
   teclaActiva?.classList.remove("abajo"); teclaActiva = null;
 }
 
+const grupos = (t) => t.match(/.{1,5}/g).join(" ");   // grupos de 5, como el tráfico real
+
 function actualizarCinta() {
-  $("cinta").innerHTML = cifrado
-    ? cifrado.match(/.{1,5}/g).join(" ")             // grupos de 5, como el tráfico real
-    : `<span class="vacio">La máquina escribirá el encabezado oficial…</span>`;
-  $("claro").innerHTML = claro
-    ? `Tu texto: <b>${claro.slice(0, CRIB.length)}</b>${claro.slice(CRIB.length)}`
-    : "";
-  const mensaje = Math.max(0, claro.length - CRIB.length);
-  const faltan = MIN_MENSAJE - mensaje;
-  $("btnEnviar").disabled = escribiendoCrib || faltan > 0;
-  avisar(escribiendoCrib ? "Escribiendo el encabezado oficial…"
-       : mensaje === 0 ? "Ahora escribe tu mensaje secreto"
-       : faltan > 0 ? `Sigue escribiendo… (mínimo ${faltan} letras más)`
-       : "Cuando termines, toca Transmitir");
+  $("claro").innerHTML = claro || `<span class="vacio">Toca las teclas de abajo…</span>`;
+  $("cinta").textContent = cifrado ? grupos(cifrado) : "—";
+  const faltan = MIN_MENSAJE - claro.length;
+  $("btnEnviar").disabled = faltan > 0;
+  $("btnBorrar").disabled = !claro;
+  avisar(claro && faltan > 0 ? `Escribe al menos ${faltan} letra${faltan > 1 ? "s" : ""} más` : "");
 }
 
 function avisar(texto, mal = false) {
@@ -604,37 +621,33 @@ function avisar(texto, mal = false) {
   $("aviso").classList.toggle("mal", mal);
 }
 
-let turnoCrib = 0;
-
+// La máquina arranca con la clave elegida y cifra el encabezado oficial sin mostrarlo:
+// el visitante solo ve su propio mensaje.
 function reiniciarMaquina() {
   maquina = new Enigma(claveActual());
+  cribCifrado = maquina.procesar(CRIB);
   claro = ""; cifrado = "";
-  [...maquina.posiciones()].forEach((l, i) => ventanasT[i].fijar(LETRAS.indexOf(l)));
-  escribirCrib();
-}
-
-// Como los operadores alemanes: todo mensaje empieza con el mismo encabezado.
-// La máquina lo teclea sola, con sus lámparas y rotores, y luego le toca al visitante.
-async function escribirCrib() {
-  const turno = ++turnoCrib;                  // si alguien reinicia a medias, la vuelta vieja se detiene
-  escribiendoCrib = true;
-  actualizarCinta();
-  await esperar(450);
-  for (const letra of CRIB) {
-    if (turno !== turnoCrib) return;
-    pulsar(document.querySelector(`.tecla[data-l="${letra}"]`));
-    await esperar(110);
-    soltar();
-    await esperar(60);
-  }
-  if (turno !== turnoCrib) return;
-  escribiendoCrib = false;
+  sincronizarVentanas(false);
   actualizarCinta();
 }
 
-const esperar = (ms) => new Promise((ok) => setTimeout(ok, ms));
+function sincronizarVentanas(animado = true) {
+  [...maquina.posiciones()].forEach((l, i) => ventanasT[i].fijar(LETRAS.indexOf(l), { animado }));
+}
 
-$("btnBorrar").onclick = reiniciarMaquina;
+// La Enigma real no podía borrar; aquí se vuelve a cifrar todo sin la última letra.
+function borrar() {
+  if (!claro) return;
+  claro = claro.slice(0, -1);
+  maquina = new Enigma(claveActual());
+  cifrado = maquina.procesar(CRIB + claro).slice(CRIB.length);
+  sincronizarVentanas();
+  vibrar(10);
+  actualizarCinta();
+}
+
+$("btnBorrar").onclick = borrar;
+$("btnVolver").onclick = () => irA(1);
 $("btnEnviar").onclick = transmitir;
 
 // =====================================================================
@@ -643,7 +656,7 @@ $("btnEnviar").onclick = transmitir;
 // =====================================================================
 async function transmitir() {
   if (location.protocol === "file:") {
-    console.warn("Sin servidor; se habría enviado: " + JSON.stringify({ cifrado }));
+    console.warn("Sin servidor; se habría enviado: " + JSON.stringify({ cifrado: cribCifrado + cifrado }));
   } else {
     $("btnEnviar").disabled = true;
     avisar("Transmitiendo…");
@@ -651,7 +664,7 @@ async function transmitir() {
       const r = await fetch("/api/interceptar", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ cifrado }),
+        body: JSON.stringify({ cifrado: cribCifrado + cifrado }),   // encabezado + mensaje, todo cifrado
       });
       if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || r.status);
       estado(true, "conectado");
@@ -662,7 +675,7 @@ async function transmitir() {
       return;
     }
   }
-  $("cintaFinal").textContent = cifrado.match(/.{1,5}/g).join(" ");
+  $("cintaFinal").textContent = grupos(cifrado);
   irA(3);
 }
 
@@ -692,6 +705,7 @@ function estado(ok, txt) { $("estado").innerHTML = `Servidor: <b class="${ok ? "
 
 // Teclado físico (útil para probar en la laptop)
 window.addEventListener("keydown", (e) => {
+  if (e.key === "Backspace" && $("paso-escribir").classList.contains("activa")) { e.preventDefault(); borrar(); return; }
   const t = document.querySelector(`.tecla[data-l="${e.key.toUpperCase()}"]`);
   if (t && $("paso-escribir").classList.contains("activa") && !e.repeat) presionar(t);
 });
