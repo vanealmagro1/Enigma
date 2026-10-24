@@ -87,33 +87,51 @@
   .nota { font-size: 1.9vh; color: var(--tenue); line-height: 1.6; }
   .nota b { color: var(--texto); font-weight: 600; }
 
-  /* Escena compacta para que quepa el grafo */
-  #rompiendo { justify-content: flex-start; gap: 2.4vh; padding-top: 3vh; padding-bottom: 3vh; }
-  #rompiendo .bloque { padding: 2vh 1.8vw; }
-  #rompiendo .ventanilla { width: 6vh; height: 7.4vh; font-size: 4.2vh; }
-  #rompiendo .numero { font-size: 5.6vh; }
+  /* ---------- Rompiendo: grafo grande + barra lateral ---------- */
+  #rompiendo { padding: 2.4vh 3vw; justify-content: stretch; }
+  .tablero-bombe { flex: 1; display: grid; grid-template-columns: 1fr 28vw; gap: 1.8vw; min-height: 0; }
+  .lienzo {
+    display: flex; flex-direction: column; min-height: 0; padding: 2vh 1.6vw 1.6vh;
+    border: 1px solid var(--borde); border-radius: 1.2vh;
+    background: radial-gradient(ellipse at 50% 45%, #2a231c 0%, var(--panel) 55%, #15110d 100%);
+  }
+  .lienzo-cab { display: flex; justify-content: space-between; align-items: baseline; gap: 2vw; flex-wrap: wrap; }
+  .leyenda { display: flex; gap: 1.4vw; font-size: 1.45vh; color: var(--tenue); flex-wrap: wrap; }
+  .leyenda span { display: inline-flex; align-items: center; gap: .5vw; }
+  .leyenda .ln { width: 2.2vw; height: 0; border-top: 2px solid #8a7d6a; }
+  .leyenda .ln.rojo { border-top: 3px dashed var(--acento); }
+  .leyenda .pt { width: 1.6vh; height: 1.6vh; border-radius: 50%; background: var(--papel); box-shadow: 0 0 0 3px var(--ambar); }
+  .lienzo svg { flex: 1; min-height: 0; width: 100%; display: block; }
+  #gCicloTxt { font-family: var(--maquina); font-size: 3.2vh; color: var(--acento); min-height: 4vh; letter-spacing: .08em; text-align: center; }
 
-  /* ---------- Menú de Turing ---------- */
-  .menu { flex: 1; display: flex; gap: 2.4vw; min-height: 0; }
-  .grafo { flex: 1.5; min-height: 0; position: relative; }
-  .grafo svg { width: 100%; height: 100%; display: block; }
-  .explica { flex: 1; display: flex; flex-direction: column; gap: 1.6vh; }
-  .cifras { display: flex; gap: 2.4vw; font-size: 1.8vh; color: var(--tenue); }
-  .cifras b { display: block; font-family: var(--maquina); font-weight: 400; font-size: 4.4vh; color: var(--texto); }
+  .lateral { display: flex; flex-direction: column; gap: 1.6vh; min-height: 0; }
+  .lateral .bloque { flex: none; padding: 1.6vh 1.4vw; }
+  .lateral .ventanas { margin: 1vh 0 .6vh; }
+  .lateral .ventanilla { width: 5.4vh; height: 6.6vh; font-size: 3.8vh; }
+  .lateral .orden { font-size: 1.9vh; }
+  .lateral .numero { font-size: 5vh; line-height: 1.1; }
+  .lateral .barra { margin: 1.2vh 0 0; }
+  .lateral .nota { font-size: 1.75vh; }
+  .lateral .nota.pequena { font-size: 1.5vh; }
+  .cifras { display: flex; justify-content: space-between; font-size: 1.7vh; color: var(--tenue); }
+  .cifras b { display: block; font-family: var(--maquina); font-weight: 400; font-size: 5.6vh; line-height: 1.1; color: var(--texto); }
   .cifras .rojo b { color: var(--acento); }
-  #gCicloTxt { font-family: var(--maquina); font-size: 2.6vh; color: var(--acento); min-height: 3vh; letter-spacing: .06em; }
-  .arista { stroke: #6d6255; stroke-width: 2; fill: none; opacity: 0; transition: opacity .35s, stroke .4s, stroke-width .4s; }
+
+  .arista { stroke: #8a7d6a; stroke-width: 2.5; fill: none; opacity: 0; transition: opacity .35s, stroke .4s, stroke-width .4s; }
   .arista.ver { opacity: 1; }
-  .arista.ciclo { stroke: var(--acento); stroke-width: 3.5; }
+  .arista.ciclo { stroke: var(--acento); stroke-width: 5; stroke-dasharray: 12 7; animation: fluir .9s linear infinite; }
+  @keyframes fluir { to { stroke-dashoffset: -19; } }
   .etiqueta { opacity: 0; transition: opacity .35s; }
   .etiqueta.ver { opacity: 1; }
   .etiqueta circle { fill: var(--cuerpo); stroke: #6d6255; }
   .etiqueta.ciclo circle { stroke: var(--acento); }
-  .etiqueta text { fill: var(--tenue); font: 600 11px var(--mono); text-anchor: middle; dominant-baseline: central; }
+  .etiqueta text { fill: var(--tenue); font: 600 14px var(--mono); text-anchor: middle; dominant-baseline: central; }
+  .etiqueta.ciclo text { fill: #f3c9c4; }
   .nodo circle { fill: var(--papel); stroke: #000; stroke-width: 1.5; transition: fill .4s; }
-  .nodo text { fill: var(--tinta); font: 20px var(--maquina); text-anchor: middle; dominant-baseline: central; }
+  .nodo text { fill: var(--tinta); font: 28px var(--maquina); text-anchor: middle; dominant-baseline: central; }
   .nodo.ciclo circle { fill: #f3c9c4; }
-  .nodo.prueba circle { stroke: var(--ambar); stroke-width: 4; }
+  .nodo.prueba circle { stroke: var(--ambar); stroke-width: 6; animation: latido 1.4s ease-in-out infinite; }
+  @keyframes latido { 50% { stroke-width: 10; } }
 
   /* Alineación crib / cifrado: ninguna letra se cifra a sí misma */
   .alineacion { display: grid; grid-auto-flow: column; gap: .5vw; justify-content: start; margin-top: 1.6vh; }
@@ -168,39 +186,47 @@
       La clave nunca salió del celular.</div>
   </section>
 
-  <!-- 3. Rompiendo -->
+  <!-- 3. Rompiendo: el grafo es el protagonista -->
   <section class="escena" id="rompiendo">
-    <div class="rotulo rojo">● La Bombe está trabajando</div>
-    <div class="fila">
-      <div class="bloque">
-        <div class="rotulo">Probando</div>
-        <div class="ventanas"><div class="ventanilla" id="v0">A</div><div class="ventanilla" id="v1">A</div><div class="ventanilla" id="v2">A</div></div>
-        <div class="orden">Rotores <b id="ordenActual">I · II · III</b></div>
+    <div class="tablero-bombe">
+      <div class="lienzo">
+        <div class="lienzo-cab">
+          <div class="rotulo rojo">● El menú de Turing de este mensaje</div>
+          <div class="leyenda">
+            <span><i class="ln"></i>letra del encabezado → letra cifrada (número = posición)</span>
+            <span><i class="ln rojo"></i>ciclo</span>
+            <span><i class="pt"></i>letra de prueba</span>
+          </div>
+        </div>
+        <svg id="grafo" viewBox="0 0 900 560" preserveAspectRatio="xMidYMid meet"></svg>
+        <div id="gCicloTxt"></div>
       </div>
-      <div class="bloque" style="flex: 1.6">
-        <div class="rotulo">Configuraciones revisadas</div>
-        <div class="numero"><span id="probadas">0</span> <span class="de">de <span id="total">1 054 560</span></span></div>
-        <div class="barra"><i id="barra"></i></div>
-        <div class="nota">En cada posición de los rotores, la Bombe supone con qué letra está conectada
-          la <b id="pruebaTxt">letra de prueba</b> en el clavijero (26 hipótesis) y la hace dar la vuelta a un ciclo del menú.
-          Si no vuelve a sí misma, la hipótesis se contradice y se descarta. Encabezado conocido: <b id="cribTxt"></b>.</div>
-      </div>
-    </div>
-    <div class="bloque menu">
-      <div class="grafo"><svg id="grafo" viewBox="0 0 800 400" preserveAspectRatio="xMidYMid meet"></svg></div>
-      <div class="explica">
-        <div class="rotulo">El menú de Turing de este mensaje</div>
-        <div class="nota">Cada letra del encabezado se une con la letra en que se convirtió; el número es su posición.
-          Cuando las uniones cierran un <b>ciclo</b>, una suposición falsa sobre el clavijero se contradice a sí misma al recorrerlo:
-          así descartaba claves la Bombe de 1940.</div>
+
+      <aside class="lateral">
         <div class="cifras">
           <div><b id="gLetras">0</b>letras</div>
           <div><b id="gAristas">0</b>conexiones</div>
           <div class="rojo"><b id="gCiclos">0</b>ciclos</div>
         </div>
-        <div id="gCicloTxt"></div>
-        <div class="nota" style="font-size: 1.6vh">Letra con borde amarillo: la letra de prueba, donde empiezan las hipótesis sobre el clavijero.</div>
-      </div>
+
+        <div class="bloque">
+          <div class="rotulo">La Bombe prueba</div>
+          <div class="ventanas"><div class="ventanilla" id="v0">A</div><div class="ventanilla" id="v1">A</div><div class="ventanilla" id="v2">A</div></div>
+          <div class="orden">Rotores <b id="ordenActual">I · II · III</b></div>
+        </div>
+
+        <div class="bloque">
+          <div class="rotulo">Configuraciones revisadas</div>
+          <div class="numero"><span id="probadas">0</span></div>
+          <div class="de">de <span id="total">1 054 560</span></div>
+          <div class="barra"><i id="barra"></i></div>
+        </div>
+
+        <div class="nota">En cada configuración, la Bombe supone con qué letra está conectada la
+          <b id="pruebaTxt">letra de prueba</b> en el clavijero y la hace dar la vuelta al ciclo.
+          Si no regresa a sí misma, la suposición se contradice y se descarta.</div>
+        <div class="nota pequena">Encabezado conocido: <b id="cribTxt"></b></div>
+      </aside>
     </div>
   </section>
 
@@ -345,7 +371,7 @@ function disponer(nodos, aristas, W, H) {
     }
   }
   // Encajar en el recuadro
-  const xs = nodos.map((n) => p[n].x), ys = nodos.map((n) => p[n].y), M = 32;
+  const xs = nodos.map((n) => p[n].x), ys = nodos.map((n) => p[n].y), M = 40;
   const [x0, x1, y0, y1] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
   const e = Math.min((W - 2 * M) / (x1 - x0 || 1), (H - 2 * M) / (y1 - y0 || 1));
   for (const n of nodos) {
@@ -357,7 +383,7 @@ function disponer(nodos, aristas, W, H) {
 
 function dibujarMenu(menu, letraPrueba) {
   if (letraPrueba && menu.nodos.includes(letraPrueba)) menu.prueba = letraPrueba;
-  const W = 800, H = 400, p = disponer(menu.nodos, menu.aristas, W, H);
+  const W = 900, H = 560, p = disponer(menu.nodos, menu.aristas, W, H);
   // Aristas paralelas (mismo par de letras en dos posiciones) se curvan hacia lados distintos.
   const pares = {};
   const svgAristas = menu.aristas.map((e, i) => {
@@ -371,10 +397,10 @@ function dibujarMenu(menu, letraPrueba) {
     const cx = mx + (-(B.y - A.y) / len) * curva * sentido, cy = my + ((B.x - A.x) / len) * curva * sentido;
     const lx = (mx + cx) / 2, ly = (my + cy) / 2;   // punto medio de la curva cuadrática
     return `<path class="arista" id="ar${i}" d="M${A.x} ${A.y} Q${cx} ${cy} ${B.x} ${B.y}"/>
-            <g class="etiqueta" id="et${i}"><circle cx="${lx}" cy="${ly}" r="11"/><text x="${lx}" y="${ly}">${e.pos}</text></g>`;
+            <g class="etiqueta" id="et${i}"><circle cx="${lx}" cy="${ly}" r="14"/><text x="${lx}" y="${ly}">${e.pos}</text></g>`;
   }).join("");
   const svgNodos = menu.nodos.map((n) =>
-    `<g class="nodo ${n === menu.prueba ? "prueba" : ""}" id="no${n}"><circle cx="${p[n].x}" cy="${p[n].y}" r="19"/><text x="${p[n].x}" y="${p[n].y + 1}">${n}</text></g>`).join("");
+    `<g class="nodo ${n === menu.prueba ? "prueba" : ""}" id="no${n}"><circle cx="${p[n].x}" cy="${p[n].y}" r="27"/><text x="${p[n].x}" y="${p[n].y + 1}">${n}</text></g>`).join("");
   $("grafo").innerHTML = svgAristas + svgNodos;
   $("gLetras").textContent = menu.nodos.length;
   $("gAristas").textContent = 0;
@@ -399,13 +425,13 @@ function resaltarCiclos(menu) {
   const c = menu.ciclos[0];
   $("gCicloTxt").textContent = c
     ? "Ciclo: " + [...c.letras, c.letras[0]].join(" → ")
-    : "Sin ciclos: con cables en el clavijero, este sería un mensaje difícil para la Bombe.";
+    : "Sin ciclos: este mensaje es difícil para la Bombe.";
 }
 
 // La animación dura al menos `minimo` ms y termina cuando el servidor tenga el resultado.
 async function animarBombe(cifrado, crib, total, listo, letraPrueba, minimo = 11000) {
   $("cribTxt").textContent = crib;
-  $("pruebaTxt").textContent = "letra de prueba " + (letraPrueba || "");
+  $("pruebaTxt").textContent = "letra de prueba" + (letraPrueba ? ` (${letraPrueba})` : "");
   $("total").textContent = miles(total);
   const menu = construirMenu(crib, cifrado);
   dibujarMenu(menu, letraPrueba);
