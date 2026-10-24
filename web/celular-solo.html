@@ -1,0 +1,815 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#16130f">
+<title>ULTRA · Enigma</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Special+Elite&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --cuerpo: #16130f;        /* caja de la máquina */
+    --panel: #221d17;
+    --borde: #3a3128;
+    --tecla: #efe6d2;         /* marfil */
+    --tecla-txt: #1b1814;
+    --lampara: #2e2820;
+    --lampara-txt: #6d6255;
+    --encendida: #ffc847;     /* bombillo prendido */
+    --metal: #b9b9b4;
+    --texto: #e9dfca;
+    --tenue: #9a8c78;
+    --acento: #c8372d;        /* rojo Bletchley */
+    --ok: #7fb069;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: var(--cuerpo);
+    color: var(--texto);
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    display: flex; justify-content: center;
+    user-select: none; -webkit-user-select: none;
+    overscroll-behavior: none;
+  }
+  .app { width: 100%; max-width: 440px; min-height: 100dvh; display: flex; flex-direction: column; padding: 14px 16px 20px; }
+  h1 { font-family: "Special Elite", serif; font-weight: 400; letter-spacing: .25em; margin: 0; font-size: 1.5rem; }
+  h1 span { color: var(--acento); }
+  .sub { color: var(--tenue); font-size: .75rem; margin-top: 2px; }
+  header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 12px; }
+  .pasos { display: flex; gap: 6px; }
+  .pasos i { width: 22px; height: 4px; border-radius: 2px; background: var(--borde); }
+  .pasos i.on { background: var(--acento); }
+
+  .vista { display: none; flex: 1; flex-direction: column; gap: 12px; }
+  .vista.activa { display: flex; }
+
+  .tarjeta { background: var(--panel); border: 1px solid var(--borde); border-radius: 12px; padding: 12px 14px 14px; }
+  .tarjeta h2 { font-family: "Special Elite", serif; font-weight: 400; font-size: 1rem; margin: 0 0 2px; letter-spacing: .08em; }
+  .tarjeta p { margin: 0 0 10px; font-size: .74rem; color: var(--tenue); }
+
+  .rotores { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  .rotor { display: flex; flex-direction: column; align-items: center; gap: 5px; }
+  .rotor label { font-size: .62rem; color: var(--tenue); text-transform: uppercase; letter-spacing: .12em; }
+
+  /* ---------- Tambor: rueda que se gira con el dedo ---------- */
+  .tambor {
+    --alto: 40px;
+    position: relative; width: 100%; height: calc(var(--alto) * 3);
+    display: flex; border-radius: 8px; overflow: hidden;
+    background: #0d0b09; border: 1px solid #000;
+    box-shadow: 0 3px 8px rgba(0,0,0,.5);
+    touch-action: none; cursor: grab;
+  }
+  .tambor:active { cursor: grabbing; }
+  .tambor.fijo { cursor: default; }
+  .cara {
+    position: relative; flex: 1; overflow: hidden;
+    /* sombreado de cilindro: claro al centro, oscuro hacia arriba y abajo */
+    background: linear-gradient(#3b342b, #b8ad97 22%, #fbf6ea 50%, #b8ad97 78%, #3b342b);
+  }
+  .cara .item {
+    position: absolute; left: 0; right: 0; top: 50%;
+    height: var(--alto); margin-top: calc(var(--alto) / -2);
+    display: grid; place-items: center;
+    font-family: "Special Elite", serif; font-size: calc(var(--alto) * .6); color: var(--tecla-txt);
+    will-change: transform, opacity;
+  }
+  .estrias {                       /* rueda dentada al costado: gira junto con el tambor */
+    width: 12px; flex: none; border-left: 1px solid #000;
+    background-image: repeating-linear-gradient(#24201b 0 2px, #a39e94 2px 4px, #4b4740 4px 6px);
+    background-size: 100% 6px;
+    box-shadow: inset 0 14px 12px -6px #000, inset 0 -14px 12px -6px #000;
+  }
+  .marco {                         /* la ventanilla: lo de afuera queda en penumbra */
+    position: absolute; left: 0; right: 12px; top: 50%;
+    height: var(--alto); margin-top: calc(var(--alto) / -2);
+    border-top: 2px solid var(--metal); border-bottom: 2px solid var(--metal);
+    box-shadow: 0 0 0 999px rgba(10,8,6,.42);
+    pointer-events: none; transition: border-color .2s;
+  }
+  .tambor.repetido .marco { border-color: var(--acento); }
+  .tambor.repetido { animation: sacudir .25s; }
+
+  /* ---------- Clavijero ---------- */
+  .clavijero { position: relative; display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 2px 0 8px; }
+  .clavijero .fila { display: flex; gap: 5px; }
+  .enchufe {
+    position: relative; z-index: 1;
+    width: 31px; height: 40px; border-radius: 6px; padding: 5px 0 4px;
+    border: 1px solid var(--borde); background: #0d0b09; color: var(--tenue);
+    font: 600 .72rem "IBM Plex Mono", monospace;
+    display: flex; flex-direction: column; align-items: center; justify-content: space-between;
+    cursor: pointer; touch-action: manipulation;
+  }
+  .enchufe .hoyos { display: flex; gap: 5px; }
+  .enchufe .hoyos i { width: 7px; height: 7px; border-radius: 50%; background: #000; box-shadow: 0 0 0 1px #4a4038; }
+  .enchufe.sel { border-color: var(--encendida); color: var(--encendida); animation: latido 1s infinite; }
+  .enchufe.conectado { border-color: var(--c); color: var(--tecla); }
+  .enchufe.conectado .hoyos i { background: var(--c); box-shadow: 0 0 0 1px #000; }
+  @keyframes latido { 50% { box-shadow: 0 0 10px 1px rgba(255,200,71,.5); } }
+  #cables { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; z-index: 2; }
+  #cables path { fill: none; stroke-linecap: round; }
+  .resumen { font-size: .78rem; text-align: center; letter-spacing: .12em; color: var(--tenue); min-height: 1.2em; }
+  .resumen b { font-weight: 600; }
+  .error { color: var(--acento); font-size: .75rem; min-height: 1.1em; text-align: center; }
+
+  .boton {
+    font: inherit; font-weight: 600; letter-spacing: .12em; text-transform: uppercase;
+    border: none; border-radius: 10px; padding: 15px; cursor: pointer;
+    background: var(--acento); color: #fff; width: 100%;
+  }
+  .boton:disabled { opacity: .35; cursor: default; }
+  .boton.sec { background: transparent; color: var(--texto); border: 1px solid var(--borde); }
+  .fila-botones { display: flex; gap: 10px; }
+  .fila-botones .boton { flex: 1; }
+  .empuje { margin-top: auto; }
+
+  /* ---------- Paso 2: máquina ---------- */
+  .ventanas { display: flex; justify-content: center; gap: 12px; }
+  .ventanas .tambor { width: 54px; }
+
+  .cinta {
+    background: var(--tecla); color: var(--tecla-txt); border-radius: 6px; padding: 10px 12px;
+    font-family: "Special Elite", serif; font-size: 1.15rem; letter-spacing: .12em; line-height: 1.5;
+    min-height: 3.3em; word-break: break-all;
+  }
+  .cinta .vacio { color: #9b8f7c; font-size: .85rem; letter-spacing: 0; }
+  .claro { font-size: .72rem; color: var(--tenue); margin-top: 6px; word-break: break-all; }
+  .claro b { color: var(--ok); font-weight: 600; }
+
+  .tablero { display: flex; flex-direction: column; align-items: center; gap: 7px; }
+  .tablero .fila { display: flex; gap: 5px; }
+  .lampara {
+    width: 34px; height: 34px; border-radius: 50%;
+    display: grid; place-items: center; font-weight: 600; font-size: .85rem;
+    background: var(--lampara); color: var(--lampara-txt); border: 1px solid #000;
+    transition: background .25s, box-shadow .25s;
+  }
+  .lampara.on { transition: none; background: var(--encendida); color: #3a2600; box-shadow: 0 0 18px 4px rgba(255,200,71,.65); }
+
+  /* Tecla de máquina de escribir: tapa redonda con aro metálico sobre un vástago */
+  #teclado { gap: 2px; padding: 10px 0 6px; border-radius: 10px;
+    background: linear-gradient(#1d1915, #120f0c); box-shadow: inset 0 2px 8px rgba(0,0,0,.6); }
+  .tecla {
+    position: relative; width: 34px; height: 50px;
+    background: none; border: none; padding: 0; cursor: pointer;
+    touch-action: none; -webkit-touch-callout: none; font-family: inherit; display: block;
+  }
+  .tapa {
+    position: absolute; left: 0; top: 0; width: 34px; height: 34px; border-radius: 50%; z-index: 1;
+    display: grid; place-items: center;
+    font-family: "Special Elite", serif; font-size: 1rem; color: var(--tecla-txt);
+    background: radial-gradient(circle at 40% 35%, #fbf6ea, var(--tecla) 55%, #d8ccb2);
+    border: 3px solid var(--metal);
+    box-shadow: 0 0 0 1px #5f5f5a, inset 0 1px 0 rgba(255,255,255,.7),
+      inset 0 -2px 3px rgba(0,0,0,.18), 0 5px 6px rgba(0,0,0,.55);
+    transition: transform .06s ease-out, box-shadow .06s ease-out;
+  }
+  .vastago {
+    position: absolute; left: 50%; top: 24px; width: 6px; height: 24px; margin-left: -3px;
+    background: linear-gradient(90deg, #4a4a46, #9d9d97 45%, #3b3b38);
+    border-radius: 0 0 2px 2px;
+    transition: height .06s ease-out;
+  }
+  .tecla.abajo .tapa {
+    transform: translateY(12px);
+    box-shadow: 0 0 0 1px #5f5f5a, inset 0 1px 0 rgba(255,255,255,.5),
+      inset 0 -1px 2px rgba(0,0,0,.2), 0 1px 2px rgba(0,0,0,.6);
+    transition-duration: .03s;
+  }
+  .tecla.abajo .vastago { height: 12px; transition-duration: .03s; }
+  .tecla.bloqueada .tapa { animation: sacudir .25s; border-color: var(--acento); }
+  @keyframes sacudir { 25% { transform: translateX(-3px); } 75% { transform: translateX(3px); } }
+  .separador { height: 1px; background: var(--borde); width: 100%; margin: 2px 0; }
+  .aviso { text-align: center; font-size: .78rem; color: var(--tenue); min-height: 1.2em; }
+  .aviso.mal { color: var(--acento); }
+
+  /* ---------- Paso 3: enviado ---------- */
+  .sello { text-align: center; padding: 30px 10px; }
+  .sello .icono { font-size: 3rem; }
+  .sello h2 { font-family: "Special Elite", serif; font-weight: 400; letter-spacing: .1em; }
+  .sello p { color: var(--tenue); font-size: .85rem; }
+  .estado { margin-top: 10px; font-size: .7rem; color: var(--tenue); text-align: center; }
+  .estado b { color: var(--ok); font-weight: 400; }
+  .estado b.no { color: var(--acento); }
+
+  @media (max-width: 360px) {
+    .lampara { width: 30px; height: 30px; font-size: .78rem; }
+    .tecla, .tapa { width: 30px; } .tapa { height: 30px; font-size: .9rem; }
+    .enchufe { width: 28px; }
+    .tablero .fila, .clavijero .fila { gap: 4px; }
+  }
+</style>
+</head>
+<body>
+<main class="app">
+  <header>
+    <div>
+      <h1>ULTR<span>A</span></h1>
+      <div class="sub">Enigma I · Reflector B</div>
+    </div>
+    <div class="pasos"><i class="on"></i><i></i><i></i></div>
+  </header>
+
+  <!-- PASO 1: elegir la clave -->
+  <section class="vista activa" id="paso-clave">
+    <div class="tarjeta">
+      <h2>1 · Rotores</h2>
+      <p>Gira cada rueda: arriba el rotor, abajo su letra inicial.</p>
+      <div class="rotores" id="selRotores"></div>
+      <div class="rotores" id="ruedas" style="margin-top: 12px"></div>
+    </div>
+
+    <div class="tarjeta">
+      <h2>2 · Clavijero</h2>
+      <p>Toca dos letras para unirlas con un cable (hasta 4). Toca una conectada para quitarla.</p>
+      <div class="clavijero" id="clavijero"></div>
+      <div class="resumen" id="resumen"></div>
+    </div>
+
+    <div class="error" id="errClave"></div>
+    <div class="empuje fila-botones">
+      <button class="boton sec" id="btnAzar">Al azar</button>
+      <button class="boton" id="btnListo">Listo</button>
+    </div>
+  </section>
+
+  <!-- PASO 2: escribir -->
+  <section class="vista" id="paso-escribir">
+    <div class="ventanas" id="ventanas"></div>
+
+    <div>
+      <div class="cinta" id="cinta"><span class="vacio">Tu mensaje debe empezar con HOLA</span></div>
+      <div class="claro" id="claro"></div>
+    </div>
+
+    <div class="tablero" id="lamparas"></div>
+    <div class="separador"></div>
+    <div class="tablero" id="teclado"></div>
+    <div class="aviso" id="aviso"></div>
+
+    <div class="empuje fila-botones">
+      <button class="boton sec" id="btnBorrar">Reiniciar</button>
+      <button class="boton" id="btnEnviar" disabled>Transmitir</button>
+    </div>
+  </section>
+
+  <!-- PASO 3: enviado -->
+  <section class="vista" id="paso-enviado">
+    <div class="tarjeta sello">
+      <div class="icono">📡</div>
+      <h2>MENSAJE INTERCEPTADO</h2>
+      <p>Solo viajaron las letras cifradas. Mira la pantalla: ULTRA está intentando descubrir tu clave.</p>
+      <div class="cinta" id="cintaFinal"></div>
+    </div>
+    <div class="empuje">
+      <button class="boton" id="btnOtro">Cifrar otro mensaje</button>
+    </div>
+  </section>
+
+  <div class="estado" id="estado">Servidor: <b class="no">conectando…</b></div>
+</main>
+
+<script type="module">
+// ===== Motor Enigma (copia de enigma.js) =====
+// enigma.js — Port a JavaScript de enigma.cpp (Enigma I / M3)
+// Misma lógica y mismas pruebas que la versión en C++.
+// Funciona en el navegador (<script type="module">) y en Node (node enigma.js --prueba).
+
+const N = 26;
+const mod26 = (x) => ((x % N) + N) % N;
+const aIndice = (c) => c.toUpperCase().charCodeAt(0) - 65;
+const aLetra = (i) => String.fromCharCode(65 + i);
+const esLetra = (c) => /^[A-Za-z]$/.test(c);
+
+const ROTORES = {
+  I:    { cableado: "EKMFLGDQVZNTOWYHXUSPAIBRCJ", muescas: "Q" },
+  II:   { cableado: "AJDKSIRUXBLHWTMCQGZNPYFVOE", muescas: "E" },
+  III:  { cableado: "BDFHJLCPRTXVZNYEIWGAKMUSQO", muescas: "V" },
+  IV:   { cableado: "ESOVPZJAYQUIRHXLNFTGKDCMWB", muescas: "J" },
+  V:    { cableado: "VZBRGITYUPSDNHLXAWMJQOFECK", muescas: "Z" },
+  VI:   { cableado: "JPGVOUMFYQBENHZRDKASXLICTW", muescas: "ZM" },
+  VII:  { cableado: "NZJHGRCXMYSWBOUFAIVLPEKQDT", muescas: "ZM" },
+  VIII: { cableado: "FKQHTLXOCBJSPDZRAMEWNIUYGV", muescas: "ZM" },
+};
+
+const REFLECTORES = {
+  A: "EJMZALYXVBWFCRQUONTSPIKHGD",
+  B: "YRUHQSLDPXNGOKMIEBFZCWVJAT",
+  C: "FVPJIAOYEDRZXWGCTKUQSBNMHL",
+};
+
+class Rotor {
+  constructor(nombre) {
+    const datos = ROTORES[nombre];
+    if (!datos) throw new Error(`Rotor desconocido: ${nombre}`);
+    this.nombre = nombre;
+    this.muescas = datos.muescas;
+    this.adelante = [...datos.cableado].map((c) => c.charCodeAt(0) - 65);
+    this.atras = new Array(N);
+    this.adelante.forEach((v, i) => (this.atras[v] = i));
+    this.posicion = 0;
+    this.anillo = 0;
+  }
+  enMuesca() { return this.muescas.includes(aLetra(this.posicion)); }
+  avanzar() { this.posicion = (this.posicion + 1) % N; }
+  haciaAdelante(c) { const d = this.posicion - this.anillo; return mod26(this.adelante[mod26(c + d)] - d); }
+  haciaAtras(c) { const d = this.posicion - this.anillo; return mod26(this.atras[mod26(c + d)] - d); }
+}
+
+class Enigma {
+  /**
+   * @param {object} config
+   * @param {string[]} config.rotores    izquierdo→derecho, p. ej. ["I","II","III"]
+   * @param {string}   config.reflector  "A" | "B" | "C"
+   * @param {number[]} [config.anillos]  0-25 cada uno (0 = A = 01)
+   * @param {string}   [config.posiciones] p. ej. "AAA"
+   * @param {string}   [config.clavijero]  p. ej. "AV BS CG"
+   */
+  constructor({ rotores, reflector = "B", anillos = [0, 0, 0], posiciones = "AAA", clavijero = "" }) {
+    if (new Set(rotores).size !== 3) throw new Error("Hay que usar 3 rotores distintos.");
+    this.rotores = rotores.map((n) => new Rotor(n));
+    const ref = REFLECTORES[reflector];
+    if (!ref) throw new Error(`Reflector desconocido: ${reflector}`);
+    this.reflector = [...ref].map((c) => c.charCodeAt(0) - 65);
+    this.clavijero = Array.from({ length: N }, (_, i) => i);
+    this.configurarClavijero(clavijero);
+    this.setAnillos(anillos);
+    this.setPosiciones(posiciones);
+  }
+
+  configurarClavijero(pares) {
+    for (const p of pares.trim().split(/\s+/).filter(Boolean)) {
+      if (p.length !== 2 || !esLetra(p[0]) || !esLetra(p[1])) throw new Error(`Par no válido: ${p}`);
+      const x = aIndice(p[0]), y = aIndice(p[1]);
+      if (x === y) throw new Error(`No se puede conectar ${aLetra(x)} consigo misma.`);
+      if (this.clavijero[x] !== x || this.clavijero[y] !== y) throw new Error(`Letra repetida en ${p}`);
+      this.clavijero[x] = y;
+      this.clavijero[y] = x;
+    }
+  }
+
+  setAnillos(a) { a.forEach((v, i) => (this.rotores[i].anillo = mod26(v))); }
+  setPosiciones(p) {
+    const s = p.replace(/\s/g, "").toUpperCase();
+    if (!/^[A-Z]{3}$/.test(s)) throw new Error("Hay que indicar exactamente 3 letras.");
+    [...s].forEach((c, i) => (this.rotores[i].posicion = aIndice(c)));
+  }
+  posiciones() { return this.rotores.map((r) => aLetra(r.posicion)).join(""); }
+
+  // Doble paso: el central avanza si el derecho está en muesca o si él mismo lo está.
+  avanzarRotores() {
+    const [izq, cen, der] = this.rotores;
+    const avanzaIzq = cen.enMuesca();
+    const avanzaCen = der.enMuesca() || cen.enMuesca();
+    if (avanzaIzq) izq.avanzar();
+    if (avanzaCen) cen.avanzar();
+    der.avanzar();
+  }
+
+  /** Pulsa una tecla y devuelve la lámpara que se enciende. */
+  pulsarTecla(letra) {
+    if (!esLetra(letra)) throw new Error("La Enigma solo tiene teclas de la A a la Z.");
+    this.avanzarRotores();
+    let c = this.clavijero[aIndice(letra)];
+    for (let i = 2; i >= 0; i--) c = this.rotores[i].haciaAdelante(c);
+    c = this.reflector[c];
+    for (let i = 0; i < 3; i++) c = this.rotores[i].haciaAtras(c);
+    return aLetra(this.clavijero[c]);
+  }
+
+  /** Cifra o descifra (es la misma operación). Lo que no es letra pasa tal cual. */
+  procesar(texto) {
+    return [...texto].map((ch) => (esLetra(ch) ? this.pulsarTecla(ch) : ch)).join("");
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Pruebas — las mismas cinco de enigma.cpp
+// ---------------------------------------------------------------------------
+function ejecutarPruebas(log = console.log) {
+  let fallos = 0;
+  const comprobar = (nombre, ok) => { log(`${ok ? "[ OK ] " : "[FALLO]"} ${nombre}`); if (!ok) fallos++; };
+
+  {
+    const m = new Enigma({ rotores: ["I", "II", "III"], reflector: "B" });
+    comprobar("I-II-III, UKW-B, AAA: AAAAA -> BDZGO", m.procesar("AAAAA") === "BDZGO");
+  }
+  {
+    const m = new Enigma({ rotores: ["I", "II", "III"], reflector: "B", posiciones: "ADU" });
+    const sec = [0, 1, 2].map(() => (m.pulsarTecla("A"), m.posiciones())).join(" ");
+    comprobar("Doble paso: ADU -> ADV -> AEW -> BFX", sec === "ADV AEW BFX");
+  }
+  {
+    const cfg = { rotores: ["II", "IV", "V"], reflector: "B", anillos: [1, 20, 11],
+                  posiciones: "BLA", clavijero: "AV BS CG DL FU HZ IN KM OW RX" };
+    const claro = "ANGRIFFAMMORGENBEIMSONNENAUFGANGXSTOPX";
+    const cifrado = new Enigma(cfg).procesar(claro);
+    comprobar("Reciprocidad con clavijero y anillos", cifrado !== claro && new Enigma(cfg).procesar(cifrado) === claro);
+  }
+  {
+    const m = new Enigma({ rotores: ["III", "I", "V"], reflector: "C", posiciones: "XQZ" });
+    let ok = true;
+    for (let i = 0; i < 50000 && ok; i++) { const l = aLetra(i % N); if (m.pulsarTecla(l) === l) ok = false; }
+    comprobar("Ninguna letra se cifra como ella misma (50 000 pulsaciones)", ok);
+  }
+  {
+    const m = new Enigma({ rotores: ["I", "II", "III"], reflector: "B" });
+    let n = 0;
+    do { m.pulsarTecla("A"); n++; } while (m.posiciones() !== "AAA" && n < 20000);
+    comprobar(`Periodo de los rotores = 16900 (obtenido: ${n})`, n === 16900);
+  }
+
+  log(fallos === 0 ? "\nTodas las pruebas superadas." : "\nHay pruebas fallidas.");
+  return fallos === 0;
+}
+// ===== Fin del motor =====
+
+
+// ----- Configuración de la demo -----
+const CRIB = "HOLA";                 // palabra fija al inicio del mensaje
+const ROTORES_DISP = ["I", "II", "III", "IV", "V"];
+const LETRAS = [..."ABCDEFGHIJKLMNOPQRSTUVWXYZ"];
+const MAX_CABLES = 4;
+const MIN_LETRAS = CRIB.length + 4;  // mensaje mínimo para transmitir
+const FILAS = ["QWERTZUIO", "ASDFGHJK", "PYXCVBNML"];  // distribución real de la Enigma
+const COLORES_CABLE = ["#d0453a", "#4a8fe0", "#6fb35a", "#e0a83a"];
+
+const $ = (id) => document.getElementById(id);
+const mod = (a, n) => ((a % n) + n) % n;
+const vibrar = (ms) => navigator.vibrate?.(ms);
+
+// =====================================================================
+// Tambor: rueda cilíndrica que se arrastra con el dedo y se acomoda sola
+// =====================================================================
+const PASO = 0.42;  // ángulo (rad) entre una letra y la siguiente sobre el cilindro
+
+class Tambor {
+  constructor(el, valores, { indice = 0, alto = 40, interactivo = true, alCambiar = () => {} } = {}) {
+    Object.assign(this, { el, valores, alto, alCambiar, n: valores.length, p: indice, destino: indice });
+    el.classList.add("tambor");
+    el.classList.toggle("fijo", !interactivo);
+    el.style.setProperty("--alto", `${alto}px`);
+    el.innerHTML = `<div class="cara">${'<div class="item"></div>'.repeat(5)}</div><div class="estrias"></div><div class="marco"></div>`;
+    this.items = [...el.querySelectorAll(".item")];
+    this.estrias = el.querySelector(".estrias");
+    if (interactivo) this.escuchar();
+    this.pintar();
+  }
+
+  get indice() { return mod(Math.round(this.p), this.n); }
+  get valor() { return this.valores[this.indice]; }
+
+  // Proyecta 5 letras sobre un cilindro según la posición continua p.
+  pintar() {
+    const base = Math.round(this.p), frac = this.p - base, R = this.alto / Math.sin(PASO);
+    this.items.forEach((it, j) => {
+      const k = j - 2, th = (k - frac) * PASO, c = Math.cos(th);
+      it.textContent = this.valores[mod(base + k, this.n)];
+      it.style.transform = `translateY(${(R * Math.sin(th)).toFixed(2)}px) scaleY(${Math.max(c, 0).toFixed(3)})`;
+      it.style.opacity = Math.max(c, 0).toFixed(3);
+    });
+    this.estrias.style.backgroundPositionY = `${(-this.p * 3).toFixed(2)}px`;
+  }
+
+  animarA(destino, ms = 260, avisar = false) {
+    cancelAnimationFrame(this.raf);
+    this.destino = destino;
+    const desde = this.p, t0 = performance.now();
+    const paso = (t) => {
+      const u = Math.min((t - t0) / ms, 1), e = 1 - (1 - u) ** 3;
+      this.p = desde + (destino - desde) * e;
+      this.pintar();
+      if (u < 1) this.raf = requestAnimationFrame(paso);
+      else { this.p = destino; this.pintar(); if (avisar) this.alCambiar(this.indice, this.valor); }
+    };
+    this.raf = requestAnimationFrame(paso);
+  }
+
+  // Lleva el tambor a un índice por el camino más corto (más vueltas extra si se pide).
+  fijar(indice, { animado = true, vueltas = 0 } = {}) {
+    let d = mod(indice - mod(this.destino, this.n), this.n);
+    if (d > this.n / 2 && !vueltas) d -= this.n;
+    const destino = this.destino + d + vueltas * this.n;
+    if (animado) this.animarA(destino, vueltas ? 900 : 260);
+    else { cancelAnimationFrame(this.raf); this.p = this.destino = destino; this.pintar(); }
+  }
+
+  // Un paso hacia adelante, como el trinquete de la Enigma.
+  avanzar() { this.animarA(this.destino + 1, 160); }
+
+  escuchar() {
+    let y0, p0, muestras, movio, ultimo;
+    const el = this.el;
+    el.addEventListener("pointerdown", (e) => {
+      e.preventDefault();
+      try { el.setPointerCapture(e.pointerId); } catch {}
+      cancelAnimationFrame(this.raf);
+      this.arrastrando = true; movio = false;
+      y0 = e.clientY; p0 = this.p; ultimo = this.indice;
+      muestras = [[e.timeStamp, e.clientY]];
+    });
+    el.addEventListener("pointermove", (e) => {
+      if (!this.arrastrando) return;
+      const dy = e.clientY - y0;
+      if (Math.abs(dy) > 4) movio = true;
+      this.p = p0 - dy / this.alto;       // arrastrar hacia arriba trae la siguiente letra
+      this.pintar();
+      muestras.push([e.timeStamp, e.clientY]);
+      if (muestras.length > 5) muestras.shift();
+      if (this.indice !== ultimo) { ultimo = this.indice; vibrar(4); }   // "clic" de cada muesca
+    });
+    const soltar = (e) => {
+      if (!this.arrastrando) return;
+      this.arrastrando = false;
+      let destino;
+      if (!movio) {
+        // Toque sin arrastrar: arriba retrocede, abajo avanza.
+        const r = el.getBoundingClientRect(), y = e.clientY - r.top - r.height / 2;
+        destino = Math.round(this.p) + (y < -this.alto / 2 ? -1 : y > this.alto / 2 ? 1 : 0);
+      } else {
+        // Inercia: si lo lanzas rápido, sigue girando un poco.
+        const [t1, y1] = muestras[0], [t2, y2] = muestras.at(-1);
+        const v = t2 > t1 ? -(y2 - y1) / (t2 - t1) / this.alto : 0;
+        destino = Math.round(this.p + Math.max(-8, Math.min(8, v * 160)));
+      }
+      this.animarA(destino, 300, true);
+    };
+    el.addEventListener("pointerup", soltar);
+    el.addEventListener("pointercancel", soltar);
+    el.addEventListener("wheel", (e) => {
+      e.preventDefault();
+      this.animarA(this.destino + Math.sign(e.deltaY), 160, true);
+    }, { passive: false });
+  }
+}
+
+// =====================================================================
+// Paso 1: clave
+// =====================================================================
+const clave = { rotores: ["I", "II", "III"], posiciones: ["A", "A", "A"], cables: [] };
+let seleccion = null;
+
+const columnas = (id, prefijo) => {
+  $(id).innerHTML = ["Izq.", "Centro", "Der."].map((nom, i) =>
+    `<div class="rotor">${prefijo ? `<label>${nom}</label>` : ""}<div id="${id}-${i}"></div></div>`).join("");
+  return [0, 1, 2].map((i) => $(`${id}-${i}`));
+};
+
+const tiposT = columnas("selRotores", true).map((el, i) =>
+  new Tambor(el, ROTORES_DISP, {
+    indice: ROTORES_DISP.indexOf(clave.rotores[i]), alto: 34,
+    alCambiar: (_, v) => { clave.rotores[i] = v; validarClave(); },
+  }));
+
+const letrasT = columnas("ruedas", false).map((el, i) =>
+  new Tambor(el, LETRAS, {
+    indice: 0, alto: 40,
+    alCambiar: (_, v) => { clave.posiciones[i] = v; },
+  }));
+
+// --- Clavijero: tocar dos letras las une con un cable ---
+function pintarClavijero() {
+  $("clavijero").innerHTML = FILAS.map((f) =>
+    `<div class="fila">${[...f].map((l) =>
+      `<button class="enchufe" data-l="${l}"><span class="hoyos"><i></i><i></i></span>${l}</button>`).join("")}</div>`
+  ).join("") + `<svg id="cables"></svg>`;
+  $("clavijero").querySelectorAll(".enchufe").forEach((b) => b.onclick = () => tocarEnchufe(b.dataset.l));
+}
+
+function tocarEnchufe(l) {
+  const cable = clave.cables.find((c) => c.a === l || c.b === l);
+  if (cable) {                                   // quitar un cable existente
+    clave.cables.splice(clave.cables.indexOf(cable), 1);
+    seleccion = null; vibrar(10);
+  } else if (seleccion === l) {
+    seleccion = null;
+  } else if (seleccion) {                        // segundo extremo: conectar
+    const color = COLORES_CABLE.find((co) => !clave.cables.some((c) => c.color === co));
+    clave.cables.push({ a: seleccion, b: l, color });
+    seleccion = null; vibrar(25);
+  } else if (clave.cables.length >= MAX_CABLES) {
+    mostrarError(`Máximo ${MAX_CABLES} cables. Toca uno conectado para quitarlo.`);
+    return;
+  } else {
+    seleccion = l;
+  }
+  actualizarClavijero();
+}
+
+function actualizarClavijero() {
+  $("clavijero").querySelectorAll(".enchufe").forEach((b) => {
+    const l = b.dataset.l, c = clave.cables.find((c) => c.a === l || c.b === l);
+    b.classList.toggle("sel", seleccion === l);
+    b.classList.toggle("conectado", !!c);
+    b.style.setProperty("--c", c?.color ?? "");
+  });
+  dibujarCables();
+  $("resumen").innerHTML = clave.cables.length
+    ? clave.cables.map((c) => `<b style="color:${c.color}">${c.a}↔${c.b}</b>`).join("  ")
+    : seleccion ? `Ahora toca la pareja de la ${seleccion}` : "Sin cables";
+  validarClave();
+}
+
+// Cables que cuelgan entre los dos enchufes, como en el Steckerbrett real.
+function dibujarCables() {
+  const svg = $("cables"); if (!svg) return;
+  const base = $("clavijero").getBoundingClientRect();
+  const centro = (l) => {
+    const r = $("clavijero").querySelector(`.enchufe[data-l="${l}"] .hoyos`).getBoundingClientRect();
+    return [r.left + r.width / 2 - base.left, r.top + r.height / 2 - base.top];
+  };
+  svg.innerHTML = clave.cables.map(({ a, b, color }) => {
+    const [x1, y1] = centro(a), [x2, y2] = centro(b);
+    const cx = (x1 + x2) / 2, cy = Math.max(y1, y2) + 22 + Math.abs(x2 - x1) * 0.18;
+    const d = `M${x1} ${y1} Q${cx} ${cy} ${x2} ${y2}`;
+    return `<path d="${d}" stroke="#000" stroke-opacity=".55" stroke-width="7"/>
+            <path d="${d}" stroke="${color}" stroke-width="4"/>
+            <circle cx="${x1}" cy="${y1}" r="5" fill="${color}" stroke="#000"/>
+            <circle cx="${x2}" cy="${y2}" r="5" fill="${color}" stroke="#000"/>`;
+  }).join("");
+}
+
+let errorTimer;
+function mostrarError(txt) {
+  $("errClave").textContent = txt;
+  clearTimeout(errorTimer);
+  errorTimer = setTimeout(validarClave, 2200);
+}
+
+function validarClave() {
+  const repetidos = clave.rotores.map((r, i) => clave.rotores.indexOf(r) !== i || clave.rotores.lastIndexOf(r) !== i);
+  tiposT.forEach((t, i) => t.el.classList.toggle("repetido", repetidos[i]));
+  const ok = !repetidos.some(Boolean);
+  $("errClave").textContent = ok ? "" : "Cada rotor existe una sola vez: gira el que está en rojo.";
+  $("btnListo").disabled = !ok;
+  return ok;
+}
+
+const claveActual = () => ({
+  rotores: [...clave.rotores], reflector: "B",
+  posiciones: clave.posiciones.join(""),
+  clavijero: clave.cables.map((c) => c.a + c.b).join(" "),
+});
+
+function claveAlAzar() {
+  const mezcla = [...ROTORES_DISP].sort(() => Math.random() - .5).slice(0, 3);
+  mezcla.forEach((r, i) => { clave.rotores[i] = r; tiposT[i].fijar(ROTORES_DISP.indexOf(r)); });
+  letrasT.forEach((t, i) => {
+    const k = Math.floor(Math.random() * 26);
+    clave.posiciones[i] = LETRAS[k];
+    t.fijar(k, { vueltas: 1 });                 // que se vea girar
+  });
+  const letras = [...LETRAS].sort(() => Math.random() - .5);
+  clave.cables = [0, 1, 2].map((k) => ({ a: letras[2 * k], b: letras[2 * k + 1], color: COLORES_CABLE[k] }));
+  seleccion = null;
+  vibrar([10, 40, 10]);
+  actualizarClavijero();
+}
+
+$("btnAzar").onclick = claveAlAzar;
+$("btnListo").onclick = () => { if (validarClave()) { reiniciarMaquina(); irA(2); } };
+
+// =====================================================================
+// Paso 2: máquina
+// =====================================================================
+const ventanasT = [0, 1, 2].map(() => {
+  const el = document.createElement("div");
+  $("ventanas").appendChild(el);
+  return new Tambor(el, LETRAS, { alto: 28, interactivo: false });
+});
+
+let maquina = null, claro = "", cifrado = "";
+
+function pintarTablero() {
+  $("lamparas").innerHTML = FILAS.map((f) =>
+    `<div class="fila">${[...f].map((l) => `<div class="lampara" id="L${l}">${l}</div>`).join("")}</div>`).join("");
+  $("teclado").innerHTML = FILAS.map((f) =>
+    `<div class="fila">${[...f].map((l) =>
+      `<button class="tecla" data-l="${l}" aria-label="${l}"><span class="vastago"></span><span class="tapa">${l}</span></button>`
+    ).join("")}</div>`).join("");
+
+  $("teclado").querySelectorAll(".tecla").forEach((t) => {
+    t.addEventListener("pointerdown", (e) => {
+      e.preventDefault();
+      try { t.setPointerCapture(e.pointerId); } catch {}   // la tecla sigue abajo aunque el dedo se mueva un poco
+      presionar(t);
+    });
+    ["pointerup", "pointercancel"].forEach((ev) => t.addEventListener(ev, soltar));
+  });
+}
+
+let lamparaActiva = null, teclaActiva = null;
+
+function presionar(tecla) {
+  if (lamparaActiva) soltar();
+  const letra = tecla.dataset.l;
+
+  // El mensaje tiene que empezar con el crib; la Enigma no tiene "borrar".
+  if (claro.length < CRIB.length && letra !== CRIB[claro.length]) {
+    tecla.classList.remove("bloqueada"); void tecla.offsetWidth; tecla.classList.add("bloqueada");
+    setTimeout(() => tecla.classList.remove("bloqueada"), 300);
+    avisar(`Empieza con ${CRIB}: ahora toca la ${CRIB[claro.length]}`, true);
+    vibrar(60);
+    return;
+  }
+
+  const antes = maquina.posiciones();
+  const luz = maquina.pulsarTecla(letra);       // los rotores avanzan ANTES de cerrar el circuito
+  const despues = maquina.posiciones();
+  claro += letra; cifrado += luz;
+
+  ventanasT.forEach((t, i) => { if (antes[i] !== despues[i]) t.avanzar(); });
+
+  teclaActiva = tecla; tecla.classList.add("abajo");
+  lamparaActiva = $(`L${luz}`); lamparaActiva.classList.add("on");
+  vibrar(15);
+  actualizarCinta();
+}
+
+function soltar() {
+  lamparaActiva?.classList.remove("on"); lamparaActiva = null;
+  teclaActiva?.classList.remove("abajo"); teclaActiva = null;
+}
+
+function actualizarCinta() {
+  $("cinta").innerHTML = cifrado
+    ? cifrado.match(/.{1,5}/g).join(" ")             // grupos de 5, como el tráfico real
+    : `<span class="vacio">Tu mensaje debe empezar con ${CRIB}</span>`;
+  $("claro").innerHTML = claro
+    ? `Tu texto: <b>${claro.slice(0, CRIB.length)}</b>${claro.slice(CRIB.length)}`
+    : "";
+  const faltan = MIN_LETRAS - claro.length;
+  $("btnEnviar").disabled = faltan > 0;
+  avisar(claro.length < CRIB.length ? `Escribe ${CRIB} para empezar`
+       : faltan > 0 ? `Sigue escribiendo… (mínimo ${faltan} letras más)`
+       : "Cuando termines, toca Transmitir");
+}
+
+function avisar(texto, mal = false) {
+  $("aviso").textContent = texto;
+  $("aviso").classList.toggle("mal", mal);
+}
+
+function reiniciarMaquina() {
+  maquina = new Enigma(claveActual());
+  claro = ""; cifrado = "";
+  [...maquina.posiciones()].forEach((l, i) => ventanasT[i].fijar(LETRAS.indexOf(l)));
+  actualizarCinta();
+}
+
+$("btnBorrar").onclick = reiniciarMaquina;
+$("btnEnviar").onclick = transmitir;
+
+// =====================================================================
+// Paso 3: transmitir
+// Contrato: el celular SOLO manda el texto cifrado y el crib. La clave nunca sale del teléfono.
+// =====================================================================
+function transmitir() {
+  const mensaje = { tipo: "interceptado", cifrado, crib: CRIB };
+  if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify(mensaje));
+  else console.warn("Sin servidor; mensaje que se habría enviado: " + JSON.stringify(mensaje));
+  $("cintaFinal").textContent = cifrado.match(/.{1,5}/g).join(" ");
+  irA(3);
+}
+
+$("btnOtro").onclick = () => irA(1);
+
+// ----- Navegación -----
+function irA(n) {
+  ["paso-clave", "paso-escribir", "paso-enviado"].forEach((id, i) => $(id).classList.toggle("activa", i === n - 1));
+  document.querySelectorAll(".pasos i").forEach((p, i) => p.classList.toggle("on", i < n));
+  if (n === 1) requestAnimationFrame(dibujarCables);
+}
+
+// ----- WebSocket al servidor de la laptop -----
+let ws = null;
+function conectar() {
+  if (location.protocol === "file:") { estado(false, "sin servidor (modo local)"); return; }
+  const proto = location.protocol === "https:" ? "wss" : "ws";
+  ws = new WebSocket(`${proto}://${location.host}/ws/celular`);
+  ws.onopen = () => estado(true, "conectado");
+  ws.onclose = () => { estado(false, "reconectando…"); setTimeout(conectar, 2000); };
+  ws.onerror = () => ws.close();
+}
+function estado(ok, txt) { $("estado").innerHTML = `Servidor: <b class="${ok ? "" : "no"}">${txt}</b>`; }
+
+// Teclado físico (útil para probar en la laptop)
+window.addEventListener("keydown", (e) => {
+  const t = document.querySelector(`.tecla[data-l="${e.key.toUpperCase()}"]`);
+  if (t && $("paso-escribir").classList.contains("activa") && !e.repeat) presionar(t);
+});
+window.addEventListener("keyup", soltar);
+window.addEventListener("resize", dibujarCables);
+document.fonts?.ready.then(dibujarCables);
+document.addEventListener("contextmenu", (e) => { if (e.target.closest(".tecla, .tambor")) e.preventDefault(); });
+
+pintarClavijero();
+actualizarClavijero();
+pintarTablero();
+conectar();
+</script>
+</body>
+</html>
