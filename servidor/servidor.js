@@ -14,12 +14,12 @@ import os from "node:os";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
+import { Worker } from "node:worker_threads";
 
-import { Enigma } from "../web/enigma.js";
 import { CRIB } from "../bombe/bombe.js";
-import { romper, letraDePrueba } from "../bombe/bombe2.js";   // v2: con clavijero
+import { letraDePrueba } from "../bombe/bombe2.js";   // la Bombe v2 corre en trabajador.js
 
-const PUERTO = Number(process.env.PORT) || 8080;
+const PUERTO = Number(process.env.PORT) || 8000;
 const RAIZ_WEB = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../web");
 
 const TIPOS = {
@@ -42,33 +42,34 @@ function interceptar(cifrado) {
   const id = estado.id + 1;
   estado = { id, fase: "rompiendo", cifrado, crib: CRIB, letraPrueba: letraDePrueba(CRIB, cifrado), recibido: Date.now() };
 
-  // Se responde al celular primero y la Bombe corre justo después,
-  // así el celular no se queda colgado mientras se rompe el mensaje.
-  setImmediate(() => {
-    const t0 = performance.now();
-    let candidatas, estadisticas, menu;
-    try {
-      ({ candidatas, estadisticas, menu } = romper(cifrado, CRIB));
-      candidatas = candidatas.map((c) => ({ ...c, mensaje: new Enigma(c).procesar(cifrado) }));
-    } catch (e) {
-      console.error("La Bombe falló:", e);
-      estado = { ...estado, fase: "error", error: String(e.message || e) };
+  // La Bombe corre en otro hilo (trabajador.js): el servidor sigue atendiendo a la pantalla
+  // y al celular mientras se rompe el mensaje.
+  const hilo = new Worker(new URL("./trabajador.js", import.meta.url), { workerData: { cifrado, crib: CRIB } });
+  hilo.once("message", (r) => {
+    if (estado.id !== id) return;              // ya llegó otro mensaje: este resultado es viejo
+    if (!r.ok) {
+      console.error("La Bombe falló:", r.error);
+      estado = { ...estado, fase: "error", error: r.error };
       return;
     }
-    const ms = performance.now() - t0;
+    const { candidatas, estadisticas, menu } = r, ms = Math.round(r.ms);
     if (candidatas.length) rotosHoy++;
     estado = {
       ...estado,
       fase: "listo",
-      resultado: { candidatas, ms: Math.round(ms), probadas: estadisticas.total, estadisticas, menu },
+      resultado: { candidatas, ms, probadas: estadisticas.total, estadisticas, menu },
       rotosHoy,
     };
     const c = candidatas[0];
     console.log(
       c
-        ? `  ✔ Roto en ${Math.round(ms)} ms → ${c.rotores.join("-")} ${c.posiciones} [${c.clavijero || "sin cables"}]: ${c.mensaje}`
-        : `  ✘ Sin candidatas (${Math.round(ms)} ms)`
+        ? `  ✔ Roto en ${ms} ms → ${c.rotores.join("-")} ${c.posiciones} [${c.clavijero || "sin cables"}]: ${c.mensaje}`
+        : `  ✘ Sin candidatas (${ms} ms)`
     );
+  });
+  hilo.once("error", (e) => {
+    console.error("La Bombe falló:", e);
+    if (estado.id === id) estado = { ...estado, fase: "error", error: String(e.message || e) };
   });
   return id;
 }
@@ -145,7 +146,7 @@ function direccionesLocales() {
     .map((i) => i.address);
 }
 
-servidor.listen(PUERTO, "0.0.0.0", () => {
+servidor.listen(PUERTO, () => {
   console.log("\n  ULTRA está escuchando\n");
   console.log(`  Pantalla de la laptop:  http://localhost:${PUERTO}/pantalla.html`);
   const ips = direccionesLocales();
