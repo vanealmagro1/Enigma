@@ -1,0 +1,40 @@
+/* A · La Enigma I real: metal negro rugoso, teclas de baquelita, lámparas de vidrio.
+   Para salas en penumbra o una TV/monitor. */
+@font-face { font-family: "Barlow Condensed"; src: url(fonts/barlow-condensed-latin-500-normal.woff2); font-weight: 500; }
+@font-face { font-family: "Barlow Condensed"; src: url(fonts/barlow-condensed-latin-700-normal.woff2); font-weight: 700; }
+@font-face { font-family: "Courier Prime"; src: url(fonts/courier-prime-latin-400-normal.woff2); }
+:root { --cuerpo:#111; --panel:#1b1b1b; --borde:#3d3d3d; --papel:#ece6d6; --tinta:#141414; --texto:#ece8de;
+  --tenue:#8e8e88; --acento:#c4302b; --ok:#a9d68a; --ambar:#ffcc66;
+  --maquina:"Barlow Condensed", sans-serif; --mono:"Barlow Condensed", sans-serif; }
+body { background: radial-gradient(ellipse at 50% 20%, rgba(255,255,255,.06), transparent 65%), url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 .5 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>"), #111; font-size: 1.06em; letter-spacing: .02em; }
+header { border-bottom: 1px solid #333; box-shadow: 0 1px 0 rgba(255,255,255,.05); }
+.logo { font-weight: 700; letter-spacing: .5em; }
+.rotulo { font-weight: 700; letter-spacing: .35em; }
+h1 { font-weight: 700 !important; letter-spacing: .14em !important; }
+#esperando h1 { font-size: 8vh; }
+.bloque, .lienzo, .qr-tarjeta {
+  background:
+    radial-gradient(circle at 12px 12px, #b5b5b0 0 3px, #2b2b2b 3.6px, transparent 4.6px),
+    radial-gradient(circle at calc(100% - 12px) 12px, #b5b5b0 0 3px, #2b2b2b 3.6px, transparent 4.6px),
+    radial-gradient(circle at 12px calc(100% - 12px), #b5b5b0 0 3px, #2b2b2b 3.6px, transparent 4.6px),
+    radial-gradient(circle at calc(100% - 12px) calc(100% - 12px), #b5b5b0 0 3px, #2b2b2b 3.6px, transparent 4.6px),
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 .5 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>"), linear-gradient(#222, #171717) !important;
+  border: 1px solid #474747 !important; border-radius: 6px !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.07), 0 8px 22px rgba(0,0,0,.7) !important; }
+.qr-tarjeta { transform: none !important; padding: 3.4vh !important; }
+.qr-tarjeta #qr { background: #ece6d6; padding: 1.2vh; border-radius: 4px; }
+.qr-tarjeta .leyenda-qr { color: #ece8de; font-weight: 700; letter-spacing: .3em; }
+.qr-tarjeta .sello { border-color: #ffcc66; color: #ffcc66; }
+.pasos-visita b { background: radial-gradient(circle at 40% 35%, #333, #0d0d0d 70%); border: 3px solid #c9c9c4 !important;
+  color: #f4f0e6 !important; box-shadow: 0 3px 0 #000; }
+.cinta { font-family: "Courier Prime", monospace !important; }
+.nodo circle { fill: radial-gradient(#333,#111); fill: #151515; stroke: #c9c9c4; stroke-width: 4; }
+.nodo text { fill: #f4f0e6; font-family: "Barlow Condensed"; font-weight: 700; font-size: 30px; }
+.nodo.ciclo circle { fill: #ffcc66; stroke: #e0a94a; filter: drop-shadow(0 0 12px rgba(255,204,102,.85)); }
+.nodo.ciclo text { fill: #2a1c00; }
+.arista { stroke: #707070; }
+.etiqueta circle { fill: #111; stroke: #707070; }
+.etiqueta text { fill: #c9c9c4; font-family: "Barlow Condensed"; font-weight: 700; font-size: 16px; }
+.etiqueta.ciclo circle { fill: #2a0d0b; stroke: #c4302b; }
+.etiqueta.ciclo text { fill: #ffd9a0; }
+.numero, .cifras b, .datos b, .valor { font-weight: 700; }

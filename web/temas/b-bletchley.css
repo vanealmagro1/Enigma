@@ -1,0 +1,50 @@
+/* B · Expediente de Bletchley Park: papel manila, máquina de escribir, sellos.
+   Para carpas, luz de día o proyector: fondo claro, se lee aunque haya reflejos. */
+@font-face { font-family: "Special Elite"; src: url(fonts/special-elite-latin-400-normal.woff2); }
+@font-face { font-family: "Courier Prime"; src: url(fonts/courier-prime-latin-400-normal.woff2); }
+@font-face { font-family: "Courier Prime"; src: url(fonts/courier-prime-latin-700-normal.woff2); font-weight: 700; }
+:root { --cuerpo:#e6d8b6; --panel:#f5eed9; --borde:#b9a57d; --papel:#fdf8ea; --tinta:#1a1612; --texto:#1a1612;
+  --tenue:#3d3427; --acento:#a3241a; --ok:#245a2f; --ambar:#7a4c00;
+  --maquina:"Special Elite", monospace; --mono:"Courier Prime", monospace;
+  --senal:#231f1a; --senal-brillo:transparent; }
+body { color: var(--texto); background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 .5 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>"), radial-gradient(ellipse at 30% 0%, #f3e9d0, #e4d4ae 80%); }
+header { border-bottom: 2px solid #231f1a; }
+.logo::after { content: "MOST SECRET"; display: inline-block; margin-left: 1.6vw; padding: .2vh .8vw; font-size: 1.7vh; letter-spacing: .25em;
+  color: #b02a1e; border: 3px solid #b02a1e; transform: rotate(-5deg); vertical-align: middle; opacity: .85; }
+.logo span { color: #b02a1e; }
+.bloque { background: #f7f0dc !important; border: 1px solid #c8b58c !important; border-radius: 2px !important;
+  box-shadow: 0 2px 0 #d6c39b, 0 10px 20px rgba(80,60,20,.18) !important; }
+.lienzo { background:
+    linear-gradient(rgba(60,100,170,.16) 1px, transparent 1px) 0 0 / 26px 26px,
+    linear-gradient(90deg, rgba(60,100,170,.16) 1px, transparent 1px) 0 0 / 26px 26px, #fbf6e6 !important;
+  border: 1px solid #c8b58c !important; border-radius: 2px !important; box-shadow: 0 10px 22px rgba(80,60,20,.22) !important; }
+.cinta { background: #fffaf0 !important; border: 1px solid #c8b58c; box-shadow: 0 6px 14px rgba(80,60,20,.2) !important; }
+#senal { background: linear-gradient(rgba(60,100,170,.16) 1px, transparent 1px) 0 0/22px 22px,
+  linear-gradient(90deg, rgba(60,100,170,.16) 1px, transparent 1px) 0 0/22px 22px, #fbf6e6 !important; border-color: #c8b58c !important; }
+.qr-tarjeta { background: repeating-linear-gradient(#fdf8ea 0 3.1vh, #c9d6ea 3.1vh calc(3.1vh + 1px)) !important;
+  border: 1px solid #c8b58c; box-shadow: 0 12px 24px rgba(80,60,20,.25) !important; }
+.qr-tarjeta .sello { font-size: 2.4vh !important; border-width: 3px !important; }
+.pasos-visita b { border-color: #b02a1e !important; color: #b02a1e !important; }
+#resultado h1 { display: inline-block; width: max-content; color: #b02a1e !important; border: .5vh solid #b02a1e; padding: .4vh 1.4vw;
+  transform: rotate(-2deg); opacity: .9; }
+.nodo circle { fill: #fdf8ea; stroke: #231f1a; stroke-width: 2.5; }
+.nodo text { fill: #231f1a; font-family: "Special Elite"; }
+.nodo.ciclo circle { fill: #f6dcd5; stroke: #b02a1e; stroke-width: 3; }
+.nodo.prueba circle { stroke: #a8740a; }
+.arista { stroke: #4a4236; stroke-width: 2; }
+.arista.ciclo { stroke: #b02a1e; }
+.etiqueta circle { fill: #fbf6e6; stroke: #4a4236; }
+.etiqueta text { fill: #4a4236; font-family: "Courier Prime"; font-weight: 700; }
+.etiqueta.ciclo circle { fill: #f6dcd5; stroke: #b02a1e; }
+.etiqueta.ciclo text { fill: #8a1d14; }
+.barra { background: #e2d4ae !important; }
+.ventanilla { border-color: #6b5d45 !important; }
+
+/* Contraste: textos secundarios más oscuros y gruesos (se leen con luz de día) */
+body { font-weight: 700; }
+.rotulo, .sub, .nota, .de, .orden, .leyenda, .cifras, .datos, .inter-cab, #esperando p { color: var(--tenue) !important; font-weight: 700; }
+#esperando p { font-size: 2.4vh !important; }
+.rotulo { font-size: 2vh !important; letter-spacing: .25em !important; }
+.url { color: var(--acento) !important; font-weight: 700; }
+.pasos-visita li { font-weight: 700; color: var(--texto); }
+.logo::after { opacity: 1 !important; }
