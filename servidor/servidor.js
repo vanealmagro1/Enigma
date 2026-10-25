@@ -19,7 +19,7 @@ import { Worker } from "node:worker_threads";
 import { CRIB } from "../bombe/bombe.js";
 import { letraDePrueba } from "../bombe/bombe2.js";   // la Bombe v2 corre en trabajador.js
 
-const PUERTO = Number(process.env.PORT) || 8000;
+const PUERTO = Number(process.env.PORT) || 8080;
 const RAIZ_WEB = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../web");
 
 const TIPOS = {
@@ -140,9 +140,12 @@ const servidor = http.createServer(async (req, res) => {
 });
 
 function direccionesLocales() {
-  return Object.values(os.networkInterfaces())
-    .flat()
-    .filter((i) => i && i.family === "IPv4" && !i.internal)
+  // Las redes virtuales (VirtualBox, WSL, Hyper-V, VMware, Docker) no las ve el celular: van al final.
+  const esVirtual = (i) => /virtual|vbox|vmware|vethernet|wsl|hyper-v|docker/i.test(i.nombre) || i.address.startsWith("192.168.56.");
+  return Object.entries(os.networkInterfaces())
+    .flatMap(([nombre, lista]) => (lista || []).map((i) => ({ nombre, ...i })))
+    .filter((i) => i.family === "IPv4" && !i.internal)
+    .sort((a, b) => esVirtual(a) - esVirtual(b))
     .map((i) => i.address);
 }
 
