@@ -297,9 +297,11 @@
 
 <script type="module">
 import { Enigma } from "./enigma.js";
+import { CONFIG } from "./config.js";
+import { detectarModo, enviarMensaje, probarConexion } from "./nube.js";
 
 // ----- Configuración de la demo -----
-let CRIB = "FERIABEADRAGONENLAUSFQ";         // encabezado fijo; el servidor dice cuál es (GET /api/config)
+let CRIB = CONFIG.crib;         // encabezado fijo; el servidor dice cuál es (GET /api/config)
 const CON_CABLES = true;             // la Bombe v2 ataca el clavijero: hasta MAX_CABLES cables
 const ROTORES_DISP = ["I", "II", "III", "IV", "V"];
 const LETRAS = [..."ABCDEFGHIJKLMNOPQRSTUVWXYZ"];
@@ -655,22 +657,28 @@ $("btnEnviar").onclick = transmitir;
 // Contrato: el celular SOLO manda el texto cifrado. La clave nunca sale del teléfono.
 // =====================================================================
 async function transmitir() {
+  const todo = cribCifrado + cifrado;                // encabezado + mensaje, todo cifrado
   if (location.protocol === "file:") {
-    console.warn("Sin servidor; se habría enviado: " + JSON.stringify({ cifrado: cribCifrado + cifrado }));
+    console.warn("Sin servidor; se habría enviado: " + JSON.stringify({ cifrado: todo }));
   } else {
     $("btnEnviar").disabled = true;
     avisar("Transmitiendo…");
     try {
-      const r = await fetch("/api/interceptar", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ cifrado: cribCifrado + cifrado }),   // encabezado + mensaje, todo cifrado
-      });
-      if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || r.status);
+      if ((await modo) === "nube") {
+        await enviarMensaje(todo);
+      } else {
+        const r = await fetch("/api/interceptar", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ cifrado: todo }),
+        });
+        if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || r.status);
+      }
       estado(true, "conectado");
     } catch (e) {
+      console.error(e);
       estado(false, "sin conexión");
-      avisar("No llegó a la laptop. Revisa el wifi y toca Transmitir otra vez.", true);
+      avisar("No se pudo transmitir. Revisa tu conexión y toca Transmitir otra vez.", true);
       $("btnEnviar").disabled = false;
       return;
     }
@@ -688,20 +696,27 @@ function irA(n) {
   if (n === 1) requestAnimationFrame(dibujarCables);
 }
 
-// ----- Conexión con la laptop -----
+// ----- Conexión: servidor local (hotspot) o Supabase (nube) -----
+const modo = detectarModo();
+
 async function conectar() {
   if (location.protocol === "file:") { estado(false, "sin servidor (modo local)"); return; }
   try {
-    const r = await fetch("/api/config", { cache: "no-store" });
-    const cfg = await r.json();
-    if (/^[A-Z]+$/.test(cfg.crib || "")) CRIB = cfg.crib;
+    if ((await modo) === "nube") {
+      await probarConexion();
+    } else {
+      const r = await fetch("/api/config", { cache: "no-store" });
+      const cfg = await r.json();
+      if (/^[A-Z]+$/.test(cfg.crib || "")) CRIB = cfg.crib;
+    }
     estado(true, "conectado");
-  } catch {
+  } catch (e) {
+    console.error(e);
     estado(false, "reconectando…");
     setTimeout(conectar, 2000);
   }
 }
-function estado(ok, txt) { $("estado").innerHTML = `Servidor: <b class="${ok ? "" : "no"}">${txt}</b>`; }
+function estado(ok, txt) { $("estado").innerHTML = `Conexión: <b class="${ok ? "" : "no"}">${txt}</b>`; }
 
 // Teclado físico (útil para probar en la laptop)
 window.addEventListener("keydown", (e) => {

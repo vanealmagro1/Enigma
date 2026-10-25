@@ -1,8 +1,9 @@
 import { Enigma } from "../web/enigma.js";
+import { CONFIG } from "../web/config.js";
 
-// Crib: el encabezado fijo con el que empieza todo mensaje.
-// El celular lo pide al servidor, así hay una sola fuente de verdad.
-export const CRIB = "FERIABEADRAGONENLAUSFQ";   // largo: así el menú casi siempre tiene ciclos
+// Crib: el encabezado fijo con el que empieza todo mensaje. Vive en web/config.js
+// para que el celular, la pantalla y la Bombe usen siempre el mismo.
+export const CRIB = CONFIG.crib;   // largo: así el menú casi siempre tiene ciclos
 const ROTORES = ["I", "II", "III", "IV", "V"];
 
 // ---------- Los 60 órdenes de rotores ----------

@@ -257,7 +257,10 @@
   </section>
 </main>
 
-<script>
+<script type="module">
+import { CONFIG } from "./config.js";
+import { detectarModo, ultimoMensaje } from "./nube.js";
+
 const $ = (id) => document.getElementById(id);
 const esperar = (ms) => new Promise((ok) => setTimeout(ok, ms));
 const LETRAS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -479,26 +482,72 @@ function pintarResultado(r, crib) {
 let idVisto = null, ocupado = false, ultimoEstado = null;
 let avisarListo = null;
 
+// ---------- De dónde salen los mensajes ----------
+// Local: el servidor de Node corre la Bombe y entrega el estado listo (/api/estado).
+// Nube: Supabase solo guarda el texto cifrado; la Bombe corre aquí, en un Web Worker.
+const MODO = await detectarModo();
+const CRIB = CONFIG.crib;
+let nube = { id: null, fase: "esperando" }, ultimoIdLeido = null, rotosNube = 0, hilo = null, letraDePrueba = null;
+
+async function obtenerEstado() {
+  if (MODO === "local") {
+    const r = await fetch("/api/estado", { cache: "no-store" });
+    if (!r.ok) throw new Error("sin servidor");
+    return r.json();
+  }
+  letraDePrueba ??= (await import("../bombe/bombe2.js")).letraDePrueba;
+  const m = await ultimoMensaje();
+  if (ultimoIdLeido === null) {                        // al abrir: no repetir el último mensaje
+    ultimoIdLeido = m?.id ?? 0;
+    nube = { id: ultimoIdLeido, fase: "esperando" };
+  } else if (m && m.id !== ultimoIdLeido) {
+    ultimoIdLeido = m.id;
+    if (/^[A-Z]+$/.test(m.cifrado || "") && m.cifrado.length > CRIB.length && m.cifrado.length <= 300) iniciarBombe(m);
+  }
+  return { ...nube, rotosHoy: rotosNube, direcciones: [] };
+}
+
+function iniciarBombe(m) {
+  hilo?.terminate();                                   // si llegó otro mensaje, el anterior ya no importa
+  const id = m.id;
+  nube = { id, fase: "rompiendo", cifrado: m.cifrado, crib: CRIB, letraPrueba: letraDePrueba(CRIB, m.cifrado) };
+  hilo = new Worker(new URL("./bombe-web.js", import.meta.url), { type: "module" });
+  hilo.onmessage = ({ data: r }) => {
+    if (nube.id !== id) return;
+    if (!r.ok) { nube = { ...nube, fase: "error", error: r.error }; return; }
+    if (r.candidatas.length) rotosNube++;
+    nube = {
+      ...nube,
+      fase: "listo",
+      resultado: { candidatas: r.candidatas, ms: Math.round(r.ms), probadas: r.estadisticas.total, estadisticas: r.estadisticas, menu: r.menu },
+    };
+  };
+  hilo.onerror = (e) => { if (nube.id === id) nube = { ...nube, fase: "error", error: e.message || "falló la Bombe" }; };
+  hilo.postMessage({ cifrado: m.cifrado, crib: CRIB });
+}
+
 async function preguntar() {
   try {
-    const r = await fetch("/api/estado", { cache: "no-store" });
-    const e = await r.json();
+    const e = await obtenerEstado();
     ultimoEstado = e;
     $("punto").classList.remove("no");
-    $("conexion").textContent = "escuchando";
+    $("conexion").textContent = MODO === "nube" ? "escuchando (nube)" : "escuchando";
     $("rotos").textContent = e.rotosHoy ?? 0;
     const ip = e.direcciones?.[0];
-    $("url").textContent = ip ? `http://${ip}:${location.port || 80}` : location.origin;
+    $("url").textContent = MODO === "nube"
+      ? (CONFIG.urlPublica || location.origin)
+      : ip ? `http://${ip}:${location.port || 80}` : location.origin;
 
     if (idVisto === null) idVisto = e.id;              // al abrir, no repetir el último mensaje
     else if (e.id !== idVisto && !ocupado) { idVisto = e.id; correr(e); }
 
     if (avisarListo && (e.fase === "listo" || e.fase === "error")) { avisarListo(); avisarListo = null; }
-  } catch {
+  } catch (err) {
+    console.error(err);
     $("punto").classList.add("no");
-    $("conexion").textContent = "sin servidor";
+    $("conexion").textContent = "sin conexión";
   }
-  setTimeout(preguntar, 500);
+  setTimeout(preguntar, MODO === "nube" ? 1000 : 500);
 }
 
 async function correr(e) {
