@@ -9,9 +9,9 @@ Solo las letras cifradas viajan a la laptop, y la laptop rompe el mensaje en viv
 ```
  Celular                     Buzón                         Laptop (pantalla)
  web/celular.html   ──►  Supabase: tabla mensajes   ──►  web/pantalla.html
- elige la clave,          (modo nube)                     muestra la interceptación,
- escribe y cifra          o servidor/servidor.js          corre la Bombe y enseña
-                          (modo local)                    la clave encontrada
+ elige la clave,          (modo nube)                     pone los mensajes en cola,
+ escribe y cifra          o servidor/servidor.js          corre la Bombe (Web Worker)
+                          (modo local)                    y enseña la clave encontrada
 ```
 
 1. **Celular** (`web/celular.html`). El visitante gira las ruedas para elegir 3 rotores (de I a V)
@@ -20,20 +20,27 @@ Solo las letras cifradas viajan a la laptop, y la laptop rompe el mensaje en viv
    Al tocar *Transmitir*, el celular manda **solo el texto cifrado**. Antes del mensaje, el celular
    cifra siempre el mismo encabezado oficial, el *crib* `FERIABEADRAGONENLAUSFQ` (definido en
    `web/config.js`). La clave nunca sale del teléfono.
-2. **Buzón**. Hay dos modos, y las páginas eligen solas (`modo: "auto"` en `web/config.js`):
+2. **Buzón**. Solo guarda el texto cifrado; no rompe nada. Hay dos modos, y las páginas eligen
+   solas (`modo: "auto"` en `web/config.js`):
    - **Nube**: el celular inserta el cifrado en la tabla `mensajes` de Supabase (`web/nube.js`).
-     La pantalla pregunta cada segundo por el último mensaje.
    - **Local**: si las páginas las sirve `node servidor/servidor.js`, el celular hace
-     `POST /api/interceptar` y la pantalla pregunta `GET /api/estado` cada medio segundo.
+     `POST /api/interceptar` y el servidor guarda los mensajes en memoria (hasta 500).
    La página sabe en qué modo está preguntando por `/api/config`: si responde JSON, hay
    servidor local; si no, está en la nube.
-3. **Pantalla** (`web/pantalla.html`). Con un mensaje nuevo, muestra la "estación de escucha"
-   (las letras llegan una por una), señala las primeras letras que esconden el crib, dibuja
-   el menú de Turing del mensaje y anima la búsqueda. Al final muestra el mensaje descifrado,
-   los rotores, la posición y los cables encontrados.
-4. **Bombe** (`bombe/bombe2.js`). Corre en un hilo aparte para que la pantalla no se congele:
-   - en modo nube, en un **Web Worker** del navegador de la laptop (`web/bombe-web.js`);
-   - en modo local, en un hilo de Node (`servidor/trabajador.js`).
+3. **Pantalla** (`web/pantalla.html`). Cada segundo lee del buzón los mensajes nuevos
+   (nube: `mensajesDesde` en `web/nube.js`; local: `GET /api/mensajes?desde=N`) y los pone en una
+   **cola**: se atienden todos, uno por uno, en orden de llegada. Al abrir la página no repite
+   los mensajes viejos. Con cada mensaje muestra la "estación de escucha" (las letras llegan una
+   por una), señala las primeras letras que esconden el crib, dibuja el menú de Turing del
+   mensaje y anima la búsqueda. Al final muestra el mensaje descifrado, los rotores, la posición
+   y los cables encontrados.
+   - Si hay otros esperando, cada resultado se queda al menos 15 s (`RESULTADO_MIN_MS`).
+     Arriba a la derecha aparece "En cola: N mensajes" en rojo.
+   - Si nadie transmite durante 45 s después de un resultado (`VOLVER_A_ESPERA_MS`),
+     vuelve la escena del QR.
+4. **Bombe** (`bombe/bombe2.js`). En los dos modos corre en el navegador de la laptop, en un
+   **Web Worker** (`web/bombe-web.js`) para que la pantalla no se congele. Cada mensaje tiene
+   su propio Worker: un mensaje nuevo nunca interrumpe al que se está rompiendo.
 
 ## Cómo funciona la Bombe
 
@@ -84,18 +91,20 @@ En esta laptop eso tomó unos 4 segundos. La pantalla muestra estos mismos núme
 |---|---|
 | `index.html` | Redirige a `web/celular.html` (es lo que abre el QR en la nube). |
 | `web/celular.html` | La Enigma del visitante: elegir clave, escribir, transmitir. |
-| `web/pantalla.html` | La pantalla de la laptop: QR de espera, interceptación, grafo, resultado. |
+| `web/pantalla.html` | La pantalla de la laptop: QR de espera, cola de mensajes, interceptación, grafo, resultado. |
+| `web/explicacion.js` | Lámina "Así funciona una Enigma" (tecla E): foto con sus partes y recorrido de la corriente. |
+| `web/img/enigma.jpg` | Foto de una Enigma que usa la lámina. |
 | `web/enigma.js` | Motor de la Enigma I/M3 en JavaScript (rotores I–VIII, reflectores A–C, anillos, clavijero, doble paso). Lo usan el celular, la Bombe y las pruebas. |
 | `web/config.js` | Lo único que se edita: modo (`auto`/`nube`/`local`), URL y clave pública de Supabase, `urlPublica` para el QR y el crib. |
-| `web/nube.js` | Habla con Supabase por la API REST (sin librerías): enviar y leer el último mensaje. |
-| `web/bombe-web.js` | Web Worker que corre la Bombe en el navegador (modo nube). |
+| `web/nube.js` | Habla con Supabase por la API REST (sin librerías): enviar, leer el último y leer los nuevos (`mensajesDesde`). |
+| `web/bombe-web.js` | Web Worker que corre la Bombe en el navegador de la pantalla (en los dos modos). |
 | `web/temas/` | Temas de la pantalla (`a-enigma.css`, `b-bletchley.css`) y sus fuentes. |
 | `web/vendor/qrcode.js` | Librería para generar el QR sin internet. |
 | `bombe/bombe2.js` | La Bombe v2: ataque de Turing–Welchman con clavijero (hasta 4 cables). |
 | `bombe/bombe.js` | La Bombe v1, sin clavijero (fuerza bruta sobre las 1 054 560 configuraciones). Exporta el `CRIB`. |
 | `bombe/prueba.js`, `bombe/prueba2.js` | Pruebas de la Bombe v1 y v2. |
-| `servidor/servidor.js` | Servidor local sin dependencias (solo Node): sirve `web/` y la API. |
-| `servidor/trabajador.js` | Corre la Bombe en un hilo aparte del servidor. |
+| `servidor/servidor.js` | Servidor local sin dependencias (solo Node), solo como buzón: sirve `web/` (y `/web/*`, `/bombe/*` para el Worker) y la API (`/api/interceptar`, `/api/mensajes`, `/api/config`). |
+| `herramientas/simular-visitantes.mjs` | Simula varios visitantes que transmiten seguidos, para probar la cola. |
 | `supabase/esquema.sql` | Tabla `mensajes` y sus políticas de seguridad (RLS). |
 | `simulador/enigma.cpp` | La Enigma original en C++, con sus pruebas. |
 | `contrato.md` | Esqueleto del formato de mensajes entre las piezas (sin completar). |
@@ -122,11 +131,13 @@ node servidor/servidor.js
   las direcciones para el celular (`http://<IP-de-la-laptop>:8080`).
 - El QR de la pantalla se genera solo con la IP del wifi.
 
-### Temas de la pantalla
+### Teclas de la pantalla
 
-En la pantalla, la tecla **T** cambia de tema (A → B → original). También se puede elegir en el link:
-`?tema=a` (Enigma I, sala oscura) o `?tema=b` (Bletchley Park, luz de día, el predeterminado).
-El último tema elegido se recuerda en ese navegador.
+- **T** cambia de tema (A → B → original). También se puede elegir en el link:
+  `?tema=a` (Enigma I, sala oscura) o `?tema=b` (Bletchley Park, luz de día, el predeterminado).
+  El último tema elegido se recuerda en ese navegador.
+- **E** abre la lámina "Así funciona una Enigma": la foto con sus partes; otra **E** pasa al
+  recorrido de la corriente, y otra **E** (o **Esc**) la cierra. Si llega un mensaje, se cierra sola.
 
 ## Pruebas
 
@@ -142,6 +153,16 @@ node bombe/prueba2.js 10        # Bombe v2: 10 claves al azar con 0 a 4 cables
 Acepta un segundo argumento con otro crib (por defecto usa `FERIABEADRAGON`).
 
 El simulador en C++: `g++ -std=c++17 -O2 -Wall -o enigma simulador/enigma.cpp` y luego `./enigma --prueba`.
+
+Para probar la cola de la pantalla, con la pantalla abierta:
+
+```
+node herramientas/simular-visitantes.mjs local 3 3   # 3 visitantes al servidor local, uno cada 3 s
+node herramientas/simular-visitantes.mjs nube 3 3    # lo mismo, a Supabase
+```
+
+Cada visitante usa una clave al azar (0 a 4 cables) y un mensaje distinto (`VISITANTEUNO`,
+`VISITANTEDOS`, …). El script imprime la clave y el mensaje que debería aparecer en la pantalla.
 
 ## Cómo publicar cambios
 
