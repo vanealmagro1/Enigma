@@ -165,7 +165,7 @@
     width: 34px; height: 34px; border-radius: 50%;
     display: grid; place-items: center; font-weight: 600; font-size: .85rem;
     background: var(--lampara); color: var(--lampara-txt); border: 1px solid #000;
-    transition: background .25s, box-shadow .25s;
+    transition: background .45s, box-shadow .45s;
   }
   .lampara.on { transition: none; background: var(--encendida); color: #3a2600; box-shadow: 0 0 18px 4px rgba(255,200,71,.65); }
 
@@ -309,6 +309,7 @@ const MAX_CABLES = 4;
 const MIN_MENSAJE = 3;               // letras mínimas del mensaje secreto (sin contar el encabezado)
 const FILAS = ["QWERTZUIO", "ASDFGHJK", "PYXCVBNML"];  // distribución real de la Enigma
 const COLORES_CABLE = ["#d0453a", "#4a8fe0", "#6fb35a", "#e0a83a"];
+const LAMPARA_MIN_MS = 700;          // la lámpara queda encendida al menos esto, aunque el toque sea rápido
 
 const $ = (id) => document.getElementById(id);
 const mod = (a, n) => ((a % n) + n) % n;
@@ -577,7 +578,7 @@ function pintarTablero() {
   });
 }
 
-let lamparaActiva = null, teclaActiva = null;
+let lamparaActiva = null, teclaActiva = null, lamparaDesde = 0, lamparaTimer = null;
 
 // Lo que toca el visitante.
 function presionar(tecla) {
@@ -586,7 +587,8 @@ function presionar(tecla) {
 }
 
 function pulsar(tecla) {
-  if (lamparaActiva) soltar();
+  teclaActiva?.classList.remove("abajo"); teclaActiva = null;
+  apagarLampara();                              // nunca dos lámparas a la vez
   const letra = tecla.dataset.l;
 
   const antes = maquina.posiciones();
@@ -598,13 +600,23 @@ function pulsar(tecla) {
 
   teclaActiva = tecla; tecla.classList.add("abajo");
   lamparaActiva = $(`L${luz}`); lamparaActiva.classList.add("on");
+  lamparaDesde = performance.now();
   vibrar(15);
   actualizarCinta();
 }
 
+// La tecla sube apenas se suelta; la lámpara espera hasta cumplir LAMPARA_MIN_MS.
 function soltar() {
-  lamparaActiva?.classList.remove("on"); lamparaActiva = null;
   teclaActiva?.classList.remove("abajo"); teclaActiva = null;
+  if (!lamparaActiva || lamparaTimer) return;
+  const falta = LAMPARA_MIN_MS - (performance.now() - lamparaDesde);
+  if (falta <= 0) apagarLampara();
+  else lamparaTimer = setTimeout(apagarLampara, falta);
+}
+
+function apagarLampara() {
+  clearTimeout(lamparaTimer); lamparaTimer = null;
+  lamparaActiva?.classList.remove("on"); lamparaActiva = null;
 }
 
 const grupos = (t) => t.match(/.{1,5}/g).join(" ");   // grupos de 5, como el tráfico real
