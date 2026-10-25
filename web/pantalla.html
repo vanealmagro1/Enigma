@@ -50,12 +50,23 @@
   .rotulo { font-size: 1.9vh; letter-spacing: .3em; text-transform: uppercase; color: var(--tenue); }
   .rotulo.rojo { color: var(--acento); }
 
-  /* ---------- Esperando ---------- */
-  #esperando { align-items: center; text-align: center; }
-  #esperando h1 { font-family: var(--maquina); font-weight: 400; font-size: 7vh; letter-spacing: .12em; margin: 0; }
+  /* ---------- Esperando: texto + QR grande ---------- */
+  #esperando { flex-direction: row; align-items: center; justify-content: center; gap: 6vw; }
+  .espera-texto { max-width: 48vw; display: flex; flex-direction: column; gap: 3vh; }
+  #esperando h1 { font-family: var(--maquina); font-weight: 400; font-size: 6.2vh; letter-spacing: .1em; margin: 0; line-height: 1.15; }
+  .pasos-visita { list-style: none; margin: 0; padding: 0; display: grid; gap: 1.6vh; font-size: 2.5vh; }
+  .pasos-visita li { display: flex; align-items: center; gap: 1.4vw; }
+  .pasos-visita b { font-family: var(--maquina); font-weight: 400; font-size: 3.4vh; color: var(--acento);
+    width: 5vh; height: 5vh; border: 2px solid var(--acento); border-radius: 50%; display: grid; place-items: center; flex: none; }
+  .qr-tarjeta { background: var(--papel); color: var(--tinta); border-radius: 1.6vh; padding: 3vh 3vh 2.2vh;
+    box-shadow: 0 1.4vh 4vh rgba(0,0,0,.55); text-align: center; transform: rotate(-1.2deg); }
+  .qr-tarjeta svg { width: 44vh; height: 44vh; display: block; }
+  .qr-tarjeta .leyenda-qr { font-family: var(--maquina); font-size: 3vh; letter-spacing: .12em; margin-top: 1.6vh; }
+  .qr-tarjeta .sello { display: inline-block; margin-top: 1vh; padding: .3vh 1vw; border: 2px solid var(--acento);
+    color: var(--acento); font-family: var(--maquina); font-size: 1.8vh; letter-spacing: .25em; transform: rotate(2deg); }
   .cursor { display: inline-block; width: .55em; height: .9em; background: var(--texto); vertical-align: -.08em; animation: parpadeo 1s steps(1) infinite; }
   @keyframes parpadeo { 50% { opacity: 0; } }
-  #esperando p { font-size: 2.4vh; color: var(--tenue); max-width: 60ch; margin: 0; line-height: 1.6; }
+  #esperando p { font-size: 2.2vh; color: var(--tenue); margin: 0; line-height: 1.6; }
   .url { font-size: 3vh; color: var(--ambar); letter-spacing: .05em; }
   .contador { font-size: 1.8vh; color: var(--tenue); }
 
@@ -67,6 +78,23 @@
     min-height: 10vh; word-break: break-all;
   }
   .cinta .crib { background: rgba(200,55,45,.18); border-bottom: .4vh solid var(--acento); }
+
+  /* ---------- Interceptado: estación de escucha ---------- */
+  #interceptado { gap: 2.8vh; }
+  .inter-cab { display: flex; gap: 3vw; align-items: baseline; font-size: 1.9vh; letter-spacing: .2em; text-transform: uppercase; color: var(--tenue); }
+  .inter-cab .rec { color: var(--acento); font-weight: 600; animation: parpadeo 1s steps(1) infinite; }
+  .inter-cab b { color: var(--texto); font-family: var(--maquina); font-weight: 400; font-size: 3vh; letter-spacing: .05em; }
+  .inter-cab .der { margin-left: auto; }
+  #senal { width: 100%; height: 16vh; display: block; border-radius: 1vh;
+    background: repeating-linear-gradient(90deg, transparent 0 5.9%, rgba(255,200,71,.06) 5.9% 6%),
+                repeating-linear-gradient(0deg, transparent 0 24%, rgba(255,200,71,.06) 24% 25%), #0c0a08;
+    border: 1px solid var(--borde); }
+  #cintaInter { font-size: 5vh; min-height: 18vh; }
+  #cintaInter .crib { background: transparent; border-bottom: .4vh solid transparent; transition: background .6s, border-color .6s; }
+  #cintaInter.marcar .crib { background: rgba(200,55,45,.18); border-bottom-color: var(--acento); }
+  .pista { font-size: 2.4vh; line-height: 1.6; opacity: 0; transform: translateY(1vh); transition: opacity .6s, transform .6s; }
+  .pista.ver { opacity: 1; transform: none; }
+  .pista b { color: var(--acento); font-family: var(--maquina); font-weight: 400; letter-spacing: .1em; }
 
   /* ---------- Rompiendo ---------- */
   .fila { display: flex; gap: 4vw; align-items: stretch; }
@@ -140,21 +168,35 @@
   .par span:last-child { color: var(--texto); }
   .par i { display: block; height: 1.6vh; border-left: 1px dashed var(--tenue); margin: 0 auto; width: 0; }
 
-  /* ---------- Resultado ---------- */
-  #resultado h1 { font-family: var(--maquina); font-weight: 400; font-size: 5.6vh; letter-spacing: .14em; margin: 0; color: var(--ok); }
-  .clave { display: flex; gap: 4vw; }
-  .clave .bloque { flex: none; }
-  .clave .valor { font-family: var(--maquina); font-size: 5vh; letter-spacing: .25em; }
-  .claro { font-size: 5.4vh; }
-  #resCables { font-size: 3.6vh; letter-spacing: .12em; white-space: nowrap; }
-  .clave { flex-wrap: wrap; }
-  .claro .crib { background: none; border: none; color: #8f8573; }
-  .datos { display: flex; gap: 4vw; font-size: 2vh; color: var(--tenue); }
-  .datos b { color: var(--texto); font-size: 3.2vh; display: block; font-family: var(--maquina); font-weight: 400; }
+  /* ---------- Resultado: grafo + respuesta ---------- */
+  #resultado { padding: 2.4vh 3vw; justify-content: stretch; }
+  .res-grid { flex: 1; display: grid; grid-template-columns: 47fr 53fr; gap: 2.2vw; min-height: 0; }
+  .res-grafo svg { flex: 1; min-height: 0; width: 100%; display: block; }
+  .res-info { display: flex; flex-direction: column; justify-content: center; gap: 2.4vh; min-width: 0; }
+  #resultado h1 { font-family: var(--maquina); font-weight: 400; font-size: 4.6vh; letter-spacing: .14em; margin: 0; color: var(--ok); }
+  .claro { padding: 2vh 2vw; }
+  .claro .crib { display: block; font-size: 2.2vh; color: #8f8573; letter-spacing: .14em; background: none; border: none; }
+  .claro .secreto { display: block; font-size: 5.6vh; letter-spacing: .12em; line-height: 1.25; }
+  .clave { display: flex; gap: 1.4vw; flex-wrap: wrap; }
+  .clave .bloque { flex: none; padding: 1.6vh 1.4vw; }
+  .clave .valor { font-family: var(--maquina); font-size: 3.8vh; letter-spacing: .2em; }
+  #resCables { font-size: 3vh; letter-spacing: .1em; white-space: nowrap; }
+  .datos { display: grid; grid-template-columns: repeat(3, auto); justify-content: start; gap: 1.8vh 3vw; font-size: 1.7vh; color: var(--tenue); }
+  .datos b { color: var(--texto); font-size: 3vh; display: block; font-family: var(--maquina); font-weight: 400; }
+  .nodo.cable circle { stroke: var(--ambar); stroke-width: 6; }
+  .nodo text.pareja { fill: var(--ambar); font: 600 24px var(--mono); text-anchor: middle; }
+  .leyenda .pt.cable { box-shadow: 0 0 0 3px var(--ambar); }
 
   #error h1 { font-family: var(--maquina); font-weight: 400; font-size: 5vh; color: var(--acento); margin: 0; }
   #error p { font-size: 2.4vh; color: var(--tenue); }
+  /* Aviso al cambiar de tema */
+  #avisoTema { position: fixed; left: 50%; bottom: 4vh; transform: translate(-50%, 2vh); opacity: 0; pointer-events: none;
+    background: rgba(0,0,0,.78); color: #fff; padding: 1vh 2vw; border-radius: 1vh; font: 600 2vh var(--mono);
+    transition: opacity .3s, transform .3s; z-index: 10; }
+  #avisoTema.ver { opacity: 1; transform: translate(-50%, 0); }
 </style>
+<!-- Estética: se cambia con la tecla T o con ?tema=a / ?tema=b / ?tema=base en el link -->
+<link rel="stylesheet" id="hojaTema">
 </head>
 <body>
 <header>
@@ -168,22 +210,43 @@
   </div>
 </header>
 
+<div id="avisoTema"></div>
 <main>
-  <!-- 1. Esperando -->
+  <!-- 1. Esperando: instrucciones + QR grande -->
   <section class="escena activa" id="esperando">
-    <div class="rotulo">Estación de escucha</div>
-    <h1>ESPERANDO TRANSMISIÓN<span class="cursor"></span></h1>
-    <p>Escanea el código QR, elige tu clave secreta en el celular y escribe un mensaje.
-       Solo las letras cifradas llegarán aquí. ULTRA intentará descubrir tu clave.</p>
-    <div class="url" id="url"></div>
+    <div class="espera-texto">
+      <div class="rotulo">Estación de escucha</div>
+      <h1>ESPERANDO TRANSMISIÓN<span class="cursor"></span></h1>
+      <ol class="pasos-visita">
+        <li><b>1</b>Escanea el código con tu celular</li>
+        <li><b>2</b>Elige tu clave secreta: rotores y cables</li>
+        <li><b>3</b>Escribe un mensaje y transmítelo</li>
+      </ol>
+      <p>Solo las letras cifradas llegarán aquí. La clave nunca sale de tu celular.
+         ULTRA intentará descubrirla en vivo, como Bletchley Park en 1940.</p>
+      <div class="url" id="url"></div>
+    </div>
+    <div class="qr-tarjeta">
+      <div id="qr"></div>
+      <div class="leyenda-qr">ESCANEA PARA CIFRAR</div>
+      <div class="sello">GEHEIM</div>
+    </div>
   </section>
 
-  <!-- 2. Interceptado -->
+  <!-- 2. Interceptado: estación de radio -->
   <section class="escena" id="interceptado">
-    <div class="rotulo rojo">● Transmisión interceptada</div>
+    <div class="inter-cab">
+      <span class="rec">● REC</span>
+      <span>Estación Y · Interceptación</span>
+      <span>Frecuencia <b>3 245 kHz</b></span>
+      <span class="der">Letras <b id="nLetras">0</b></span>
+      <span><b id="reloj">00:00:00</b></span>
+    </div>
+    <canvas id="senal"></canvas>
     <div class="cinta" id="cintaInter"></div>
-    <div class="nota">Esto es todo lo que tiene ULTRA: letras sin sentido, en grupos de cinco como el tráfico de 1940.
-      La clave nunca salió del celular.</div>
+    <div class="nota">Esto es todo lo que tiene ULTRA: letras sin sentido, en grupos de cinco como el tráfico de 1940.</div>
+    <div class="pista" id="interPista">Pero sabemos algo: las primeras <b id="pistaLargo">22</b> letras esconden el encabezado oficial
+      <b id="pistaCrib"></b>. Ese es el punto de apoyo de la Bombe.</div>
   </section>
 
   <!-- 3. Rompiendo: el grafo es el protagonista -->
@@ -230,22 +293,36 @@
     </div>
   </section>
 
-  <!-- 4. Resultado -->
+  <!-- 4. Resultado: el grafo que lo delató + la clave -->
   <section class="escena" id="resultado">
-    <div class="rotulo">Clave encontrada</div>
-    <h1>MENSAJE DESCIFRADO</h1>
-    <div class="cinta claro" id="cintaClaro"></div>
-    <div class="clave">
-      <div class="bloque"><div class="rotulo">Rotores</div><div class="valor" id="resRotores"></div></div>
-      <div class="bloque"><div class="rotulo">Posición inicial</div><div class="valor" id="resPos"></div></div>
-      <div class="bloque"><div class="rotulo">Clavijero</div><div class="valor" id="resCables"></div></div>
-    </div>
-    <div class="datos">
-      <div><b id="resMs"></b>tiempo real de cómputo</div>
-      <div><b id="resProb"></b>hipótesis probadas</div>
-      <div><b id="resHip"></b>pasaron el primer ciclo</div>
-      <div><b id="resProp"></b>sin contradicciones</div>
-      <div><b id="resCand"></b>clave final</div>
+    <div class="res-grid">
+      <div class="lienzo res-grafo">
+        <div class="lienzo-cab">
+          <div class="rotulo">El menú que lo delató</div>
+          <div class="leyenda">
+            <span><i class="ln rojo"></i>ciclo</span>
+            <span><i class="pt cable"></i>cable deducido (↔ pareja)</span>
+          </div>
+        </div>
+        <svg id="grafoRes" viewBox="0 0 900 560" preserveAspectRatio="xMidYMid meet"></svg>
+      </div>
+      <div class="res-info">
+        <div class="rotulo">Clave encontrada</div>
+        <h1>MENSAJE DESCIFRADO</h1>
+        <div class="cinta claro" id="cintaClaro"></div>
+        <div class="clave">
+          <div class="bloque"><div class="rotulo">Rotores</div><div class="valor" id="resRotores"></div></div>
+          <div class="bloque"><div class="rotulo">Posición</div><div class="valor" id="resPos"></div></div>
+          <div class="bloque"><div class="rotulo">Clavijero</div><div class="valor" id="resCables"></div></div>
+        </div>
+        <div class="datos">
+          <div><b id="resMs"></b>tiempo real de cómputo</div>
+          <div><b id="resProb"></b>hipótesis probadas</div>
+          <div><b id="resHip"></b>pasaron el primer ciclo</div>
+          <div><b id="resProp"></b>sin contradicciones</div>
+          <div><b id="resCand"></b>clave final</div>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -257,6 +334,7 @@
   </section>
 </main>
 
+<script src="vendor/qrcode.js"></script>
 <script type="module">
 import { CONFIG } from "./config.js";
 import { detectarModo, ultimoMensaje } from "./nube.js";
@@ -277,14 +355,94 @@ function mostrar(id) {
 }
 
 // ---------- Escenas ----------
-async function escribirCinta(el, texto, crib, msPorLetra = 55) {
+async function escribirCinta(el, texto, crib, msPorLetra = 55, alEscribir = () => {}) {
   el.innerHTML = "";
   let hecho = "";
   for (const ch of texto) {
     hecho += ch;
     el.innerHTML = pintarConCrib(hecho, crib);
+    alEscribir(hecho.length);
     await esperar(msPorLetra);
   }
+}
+
+// ---------- Señal de radio: ruido de fondo y un pulso por cada letra que llega ----------
+let senalActiva = false, energia = 0;
+const muestras = [];
+function iniciarSenal() {
+  const cv = $("senal"), dpr = window.devicePixelRatio || 1;
+  cv.width = cv.clientWidth * dpr; cv.height = cv.clientHeight * dpr;
+  const ctx = cv.getContext("2d");
+  const N = 240;
+  muestras.length = 0;
+  for (let i = 0; i < N; i++) muestras.push(0);
+  senalActiva = true;
+  const cuadro = () => {
+    if (!senalActiva) return;
+    for (let k = 0; k < 3; k++) {
+      const ruido = (Math.random() - 0.5) * 0.08;
+      const pulso = energia * Math.sin(muestras.length * 1.7) * (0.6 + Math.random() * 0.4);
+      muestras.push(ruido + pulso);
+      muestras.shift();
+      energia *= 0.86;
+    }
+    const W = cv.width, H = cv.height, css = getComputedStyle(document.documentElement);
+    ctx.clearRect(0, 0, W, H);
+    ctx.lineWidth = 2 * dpr;
+    ctx.strokeStyle = css.getPropertyValue("--senal").trim() || "#ffc847";             // cada tema elige su color
+    ctx.shadowColor = css.getPropertyValue("--senal-brillo").trim() || "rgba(255,200,71,.6)";
+    ctx.shadowBlur = 8 * dpr;
+    ctx.beginPath();
+    muestras.forEach((v, i) => {
+      const x = (i / (N - 1)) * W, y = H / 2 - v * H * 0.42;
+      i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+    });
+    ctx.stroke();
+    requestAnimationFrame(cuadro);
+  };
+  requestAnimationFrame(cuadro);
+}
+const pulsoSenal = () => (energia = 1);
+const detenerSenal = () => (senalActiva = false);
+
+// ---------- Temas: A (Enigma real, salas oscuras) y B (Bletchley, luz de día) ----------
+const TEMAS = { a: "temas/a-enigma.css", b: "temas/b-bletchley.css", base: null };
+const NOMBRES = { a: "A · Enigma I — sala oscura", b: "B · Bletchley Park — luz de día", base: "Original" };
+const ORDEN_TEMAS = ["a", "b", "base"];
+function guardarTema(t) { try { localStorage.setItem("ultra-tema", t); } catch {} }
+function temaGuardado() { try { return localStorage.getItem("ultra-tema"); } catch { return null; } }
+function aplicarTema(t, avisar = false) {
+  const tema = t in TEMAS ? t : "b";
+  const hoja = $("hojaTema");
+  if (TEMAS[tema]) hoja.href = TEMAS[tema]; else hoja.removeAttribute("href");
+  document.documentElement.dataset.tema = tema;
+  guardarTema(tema);
+  if (avisar) {
+    $("avisoTema").textContent = "Tema: " + NOMBRES[tema] + "   (T para cambiar)";
+    $("avisoTema").classList.add("ver");
+    clearTimeout(aplicarTema.t);
+    aplicarTema.t = setTimeout(() => $("avisoTema").classList.remove("ver"), 2200);
+  }
+}
+aplicarTema(new URLSearchParams(location.search).get("tema") || temaGuardado() || "b");
+window.addEventListener("keydown", (e) => {
+  if (e.key.toLowerCase() !== "t" || e.ctrlKey || e.metaKey || e.altKey) return;
+  const actual = document.documentElement.dataset.tema;
+  aplicarTema(ORDEN_TEMAS[(ORDEN_TEMAS.indexOf(actual) + 1) % ORDEN_TEMAS.length], true);
+});
+
+// ---------- QR de la pantalla de espera ----------
+let urlDelQR = null;
+function pintarQR(url) {
+  if (url === urlDelQR || typeof qrcode !== "function") return;
+  urlDelQR = url;
+  const qr = qrcode(0, "M");
+  qr.addData(url);
+  qr.make();
+  $("qr").innerHTML = qr.createSvgTag({ cellSize: 8, margin: 1, scalable: true });
+  const svg = $("qr").querySelector("svg");
+  svg.querySelectorAll("rect").forEach((r) => r.setAttribute("fill", "transparent"));   // fondo: el papel de la tarjeta
+  svg.querySelectorAll("path").forEach((p) => p.setAttribute("fill", "#1b1814"));
 }
 
 // Agrupa de a 5 y resalta las letras que corresponden al crib.
@@ -340,46 +498,89 @@ function cicloDe(e, arbol) {
   return { letras, aristas };
 }
 
-// Disposición por fuerzas (determinista): las letras se repelen y las conexiones las atraen.
+// Disposición del grafo (determinista, sin azar):
+//   1. cada grupo conectado se acomoda por separado con fuerzas (las letras se repelen, las conexiones atraen);
+//   2. los grupos se reparten en el recuadro como piezas, el más grande primero;
+//   3. una pasada final separa cualquier par de círculos que haya quedado encimado.
+const RADIO_NODO = 27, LARGO_ARISTA = 105, SEPARACION_MIN = 2 * RADIO_NODO + 26;
+
 function disponer(nodos, aristas, W, H) {
+  // --- Grupos conectados ---
+  const padre = Object.fromEntries(nodos.map((n) => [n, n]));
+  const raiz = (x) => (padre[x] === x ? x : (padre[x] = raiz(padre[x])));
+  aristas.forEach(({ a, b }) => (padre[raiz(a)] = raiz(b)));
+  const grupos = Object.values(nodos.reduce((g, n) => ((g[raiz(n)] ??= []).push(n), g), {}))
+    .sort((x, y) => y.length - x.length || x[0].localeCompare(y[0]));
+
+  // --- 1. Fuerzas dentro de cada grupo ---
   const p = {};
-  nodos.forEach((n, i) => {
-    const t = (2 * Math.PI * i) / nodos.length;
-    p[n] = { x: W / 2 + (W / 3) * Math.cos(t), y: H / 2 + (H / 3) * Math.sin(t) };
+  const piezas = grupos.map((grupo) => {
+    const enGrupo = new Set(grupo), suyas = aristas.filter((e) => enGrupo.has(e.a));
+    const k = LARGO_ARISTA, R = Math.max(k, (k * grupo.length) / (2 * Math.PI));
+    grupo.forEach((n, i) => {
+      const t = (2 * Math.PI * i) / grupo.length;
+      p[n] = { x: R * Math.cos(t), y: R * Math.sin(t) };
+    });
+    for (let it = 0, V = 500; it < V; it++) {
+      const d = Object.fromEntries(grupo.map((n) => [n, { x: -p[n].x * 0.02, y: -p[n].y * 0.02 }]));
+      for (let i = 0; i < grupo.length; i++) for (let j = i + 1; j < grupo.length; j++) {
+        const a = grupo[i], b = grupo[j];
+        let dx = p[a].x - p[b].x, dy = p[a].y - p[b].y;
+        const dist = Math.max(Math.hypot(dx, dy), 0.01), f = (k * k) / dist;
+        dx /= dist; dy /= dist;
+        d[a].x += dx * f; d[a].y += dy * f; d[b].x -= dx * f; d[b].y -= dy * f;
+      }
+      for (const { a, b } of suyas) {
+        let dx = p[a].x - p[b].x, dy = p[a].y - p[b].y;
+        const dist = Math.max(Math.hypot(dx, dy), 0.01), f = (dist * dist) / k;
+        dx /= dist; dy /= dist;
+        d[a].x -= dx * f; d[a].y -= dy * f; d[b].x += dx * f; d[b].y += dy * f;
+      }
+      const temp = k * (1 - it / V) + 1;
+      for (const n of grupo) {
+        const m = Math.max(Math.hypot(d[n].x, d[n].y), 0.01);
+        p[n].x += (d[n].x / m) * Math.min(m, temp);
+        p[n].y += (d[n].y / m) * Math.min(m, temp);
+      }
+    }
+    const xs = grupo.map((n) => p[n].x), ys = grupo.map((n) => p[n].y), borde = RADIO_NODO + 22;
+    const x0 = Math.min(...xs) - borde, y0 = Math.min(...ys) - borde;
+    return { grupo, x0, y0, w: Math.max(...xs) + borde - x0, h: Math.max(...ys) + borde + 24 - y0 };   // +24: etiqueta ↔ debajo
   });
-  const k = Math.sqrt((W * H) / nodos.length) * 0.7, VUELTAS = 400;
-  for (let it = 0; it < VUELTAS; it++) {
-    const d = Object.fromEntries(nodos.map((n) => [n, { x: 0, y: 0 }]));
-    for (let i = 0; i < nodos.length; i++) for (let j = i + 1; j < nodos.length; j++) {
-      const a = nodos[i], b = nodos[j];
-      let dx = p[a].x - p[b].x, dy = p[a].y - p[b].y;
-      const dist = Math.max(Math.hypot(dx, dy), 0.01);
-      if (dist > 2.5 * k) continue;                 // las letras lejanas ya no se empujan
-      const f = (k * k) / dist;
-      dx /= dist; dy /= dist;
-      d[a].x += dx * f; d[a].y += dy * f; d[b].x -= dx * f; d[b].y -= dy * f;
-    }
-    for (const { a, b } of aristas) {
-      let dx = p[a].x - p[b].x, dy = p[a].y - p[b].y;
-      const dist = Math.max(Math.hypot(dx, dy), 0.01), f = (dist * dist) / k;
-      dx /= dist; dy /= dist;
-      d[a].x -= dx * f; d[a].y -= dy * f; d[b].x += dx * f; d[b].y += dy * f;
-    }
-    const temp = (W / 8) * (1 - it / VUELTAS);
-    for (const n of nodos) {
-      d[n].x += (W / 2 - p[n].x) * 0.6; d[n].y += (H / 2 - p[n].y) * 0.6;     // gravedad: nada se escapa
-      const m = Math.max(Math.hypot(d[n].x, d[n].y), 0.01);
-      p[n].x += (d[n].x / m) * Math.min(m, temp);
-      p[n].y += (d[n].y / m) * Math.min(m, temp);
-    }
+
+  // --- 2. Repartir los grupos en filas ---
+  const anchoUtil = W - 40;
+  let x = 0, y = 0, altoFila = 0, anchoMax = 0;
+  for (const pz of piezas) {
+    if (x > 0 && x + pz.w > anchoUtil) { y += altoFila + 10; x = 0; altoFila = 0; }
+    pz.dx = x - pz.x0; pz.dy = y - pz.y0;
+    x += pz.w + 10; altoFila = Math.max(altoFila, pz.h); anchoMax = Math.max(anchoMax, x - 10);
   }
-  // Encajar en el recuadro
-  const xs = nodos.map((n) => p[n].x), ys = nodos.map((n) => p[n].y), M = 40;
-  const [x0, x1, y0, y1] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
-  const e = Math.min((W - 2 * M) / (x1 - x0 || 1), (H - 2 * M) / (y1 - y0 || 1));
-  for (const n of nodos) {
-    p[n].x = W / 2 + (p[n].x - (x0 + x1) / 2) * e;
-    p[n].y = H / 2 + (p[n].y - (y0 + y1) / 2) * e;
+  const altoTotal = y + altoFila;
+  const escala = Math.min(1.25, (W - 40) / anchoMax, (H - 40) / altoTotal);
+  const ox = (W - anchoMax * escala) / 2, oy = (H - altoTotal * escala) / 2;
+  for (const pz of piezas) for (const n of pz.grupo) {
+    p[n] = { x: ox + (p[n].x + pz.dx) * escala, y: oy + (p[n].y + pz.dy) * escala };
+  }
+
+  // --- 3. Nada encimado ---
+  for (let vuelta = 0; vuelta < 80; vuelta++) {
+    let movio = false;
+    for (let i = 0; i < nodos.length; i++) for (let j = i + 1; j < nodos.length; j++) {
+      const a = p[nodos[i]], b = p[nodos[j]];
+      let dx = b.x - a.x, dy = b.y - a.y;
+      const dist = Math.hypot(dx, dy) || 0.01;
+      if (dist >= SEPARACION_MIN) continue;
+      const empuje = (SEPARACION_MIN - dist) / 2;
+      dx /= dist; dy /= dist;
+      a.x -= dx * empuje; a.y -= dy * empuje; b.x += dx * empuje; b.y += dy * empuje;
+      movio = true;
+    }
+    for (const n of nodos) {
+      p[n].x = Math.min(W - RADIO_NODO - 4, Math.max(RADIO_NODO + 4, p[n].x));
+      p[n].y = Math.min(H - RADIO_NODO - 30, Math.max(RADIO_NODO + 4, p[n].y));
+    }
+    if (!movio) break;
   }
   return p;
 }
@@ -388,14 +589,16 @@ function dibujarMenu(menu, letraPrueba) {
   if (letraPrueba && menu.nodos.includes(letraPrueba)) menu.prueba = letraPrueba;
   const W = 900, H = 560, p = disponer(menu.nodos, menu.aristas, W, H);
   // Aristas paralelas (mismo par de letras en dos posiciones) se curvan hacia lados distintos.
-  const pares = {};
+  // Aristas paralelas: se abren en abanico simétrico para que sus números no se tapen.
+  const total = {}, pares = {};
+  menu.aristas.forEach((e) => { const c = [e.a, e.b].sort().join(""); total[c] = (total[c] || 0) + 1; });
   const svgAristas = menu.aristas.map((e, i) => {
     const clave = [e.a, e.b].sort().join("");
     const n = (pares[clave] = (pares[clave] ?? -1) + 1);
     const A = p[e.a], B = p[e.b];
     const mx = (A.x + B.x) / 2, my = (A.y + B.y) / 2;
     const len = Math.hypot(B.x - A.x, B.y - A.y) || 1;
-    const curva = n === 0 ? 0 : (n % 2 ? 1 : -1) * Math.ceil(n / 2) * 34;
+    const curva = (n - (total[clave] - 1) / 2) * 76;
     const sentido = e.a < e.b ? 1 : -1;
     const cx = mx + (-(B.y - A.y) / len) * curva * sentido, cy = my + ((B.x - A.x) / len) * curva * sentido;
     const lx = (mx + cx) / 2, ly = (my + cy) / 2;   // punto medio de la curva cuadrática
@@ -464,9 +667,39 @@ async function animarBombe(cifrado, crib, total, listo, letraPrueba, minimo = 11
   }
 }
 
+// Copia el menú de la escena anterior y marca en cada letra el cable que dedujo la Bombe.
+function pintarGrafoResultado(clavijero) {
+  const svg = $("grafoRes"), NS = "http://www.w3.org/2000/svg";
+  svg.innerHTML = $("grafo").innerHTML.replace(/ id="/g, ' data-id="');   // sin ids repetidos
+  svg.setAttribute("viewBox", "0 0 900 560");
+  svg.querySelectorAll(".nodo.prueba").forEach((g) => g.classList.remove("prueba"));
+  for (const par of (clavijero || "").split(" ").filter(Boolean)) {
+    for (const [x, y] of [[par[0], par[1]], [par[1], par[0]]]) {
+      const g = svg.querySelector(`[data-id="no${x}"]`);
+      if (!g) continue;
+      g.classList.add("cable");
+      const c = g.querySelector("circle");
+      const t = document.createElementNS(NS, "text");
+      t.setAttribute("class", "pareja");
+      t.setAttribute("x", c.getAttribute("cx"));
+      t.setAttribute("y", Number(c.getAttribute("cy")) + 46);
+      t.textContent = "↔" + y;
+      g.appendChild(t);
+    }
+  }
+  // Ajustar el encuadre al grafo para que llene el panel (sin espacio vacío alrededor).
+  requestAnimationFrame(() => {
+    try {
+      const c = svg.getBBox(), m = 24;
+      if (c.width > 0) svg.setAttribute("viewBox", `${c.x - m} ${c.y - m} ${c.width + 2 * m} ${c.height + 2 * m}`);
+    } catch {}
+  });
+}
+
 function pintarResultado(r, crib) {
   const c = r.candidatas[0];
-  $("cintaClaro").innerHTML = `<span class="crib">${c.mensaje.slice(0, crib.length)}</span> ${c.mensaje.slice(crib.length)}`;
+  pintarGrafoResultado(c.clavijero);
+  $("cintaClaro").innerHTML = `<span class="crib">${c.mensaje.slice(0, crib.length)}</span><span class="secreto">${c.mensaje.slice(crib.length)}</span>`;
   $("resRotores").textContent = c.rotores.join(" · ");
   $("resPos").textContent = [...c.posiciones].join(" ");
   $("resMs").textContent = r.ms < 1000 ? `${r.ms} ms` : `${(r.ms / 1000).toFixed(1)} s`;
@@ -534,9 +767,11 @@ async function preguntar() {
     $("conexion").textContent = MODO === "nube" ? "escuchando (nube)" : "escuchando";
     $("rotos").textContent = e.rotosHoy ?? 0;
     const ip = e.direcciones?.[0];
-    $("url").textContent = MODO === "nube"
-      ? (CONFIG.urlPublica || location.origin)
-      : ip ? `http://${ip}:${location.port || 80}` : location.origin;
+    const urlVisita = MODO === "nube"
+      ? (CONFIG.urlPublica || location.origin + "/")
+      : ip ? `http://${ip}:${location.port || 80}/` : location.origin + "/";
+    $("url").textContent = urlVisita.replace(/\/$/, "");
+    pintarQR(urlVisita);
 
     if (idVisto === null) idVisto = e.id;              // al abrir, no repetir el último mensaje
     else if (e.id !== idVisto && !ocupado) { idVisto = e.id; correr(e); }
@@ -557,9 +792,21 @@ async function correr(e) {
     else avisarListo = ok;
   });
 
+  // Estación de escucha: la señal llega letra por letra; después se revela el punto de apoyo.
+  $("cintaInter").classList.remove("marcar");
+  $("interPista").classList.remove("ver");
+  $("pistaCrib").textContent = e.crib;
+  $("pistaLargo").textContent = e.crib.length;
+  $("nLetras").textContent = 0;
+  $("reloj").textContent = new Date().toLocaleTimeString("es-EC", { hour12: false });
   mostrar("interceptado");
-  await escribirCinta($("cintaInter"), e.cifrado, e.crib);
-  await esperar(1200);
+  iniciarSenal();
+  await escribirCinta($("cintaInter"), e.cifrado, e.crib, 75, (n) => { pulsoSenal(); $("nLetras").textContent = n; });
+  await esperar(900);
+  $("cintaInter").classList.add("marcar");
+  $("interPista").classList.add("ver");
+  await esperar(3200);
+  detenerSenal();
 
   mostrar("rompiendo");
   await animarBombe(e.cifrado, e.crib, 60 * 17576, listo, e.letraPrueba);
