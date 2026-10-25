@@ -2,25 +2,27 @@
 //
 //   node servidor/servidor.js          (desde la raíz del repo)
 //
-// Qué hace:
-//   - Sirve la carpeta web/ (celular.html para el visitante, pantalla.html para la laptop).
-//   - POST /api/interceptar  ← el celular manda SOLO el texto cifrado.
-//   - Llama a romper() de la Bombe y guarda el resultado.
-//   - GET  /api/estado       → la pantalla de la laptop pregunta cada medio segundo.
-//   - GET  /api/config       → el celular pregunta cuál es el crib.
+// Qué hace: es solo un buzón. La Bombe corre en el navegador de la pantalla (web/bombe-web.js).
+//   - Sirve web/ en "/" (celular.html para el visitante, pantalla.html para la laptop),
+//     y también /web/* y /bombe/* (los necesita el Web Worker de la Bombe).
+//   - POST /api/interceptar          ← el celular manda SOLO el texto cifrado.
+//   - GET  /api/mensajes?desde=N     → la pantalla lee los mensajes nuevos, en orden.
+//   - GET  /api/mensajes?ultimo=1    → al abrir, la pantalla pregunta dónde va el buzón.
+//   - GET  /api/config               → el crib (y las direcciones para el QR).
 
 import http from "node:http";
 import os from "node:os";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
-import { Worker } from "node:worker_threads";
 
 import { CRIB } from "../bombe/bombe.js";
-import { letraDePrueba } from "../bombe/bombe2.js";   // la Bombe v2 corre en trabajador.js
 
 const PUERTO = Number(process.env.PORT) || 8080;
-const RAIZ_WEB = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../web");
+const RAIZ = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const RAIZ_WEB = path.join(RAIZ, "web");
+// Carpetas que se pueden pedir con prefijo; todo lo demás sale de web/.
+const CARPETAS = { "/web/": RAIZ_WEB, "/bombe/": path.join(RAIZ, "bombe") };
 
 const TIPOS = {
   ".html": "text/html; charset=utf-8",
@@ -33,44 +35,16 @@ const TIPOS = {
   ".ttf": "font/ttf",
 };
 
-// ---------- Estado compartido ----------
-// Solo se guarda el último mensaje: la pantalla muestra uno a la vez.
-let estado = { id: 0, fase: "esperando" };
-let rotosHoy = 0;
+// ---------- Buzón en memoria ----------
+// Todos los mensajes, en orden de llegada. La pantalla los atiende uno por uno.
+const MAX_BUZON = 500;
+const buzon = [];          // [{ id, cifrado, creado }]
+let ultimoId = 0;
 
 function interceptar(cifrado) {
-  const id = estado.id + 1;
-  estado = { id, fase: "rompiendo", cifrado, crib: CRIB, letraPrueba: letraDePrueba(CRIB, cifrado), recibido: Date.now() };
-
-  // La Bombe corre en otro hilo (trabajador.js): el servidor sigue atendiendo a la pantalla
-  // y al celular mientras se rompe el mensaje.
-  const hilo = new Worker(new URL("./trabajador.js", import.meta.url), { workerData: { cifrado, crib: CRIB } });
-  hilo.once("message", (r) => {
-    if (estado.id !== id) return;              // ya llegó otro mensaje: este resultado es viejo
-    if (!r.ok) {
-      console.error("La Bombe falló:", r.error);
-      estado = { ...estado, fase: "error", error: r.error };
-      return;
-    }
-    const { candidatas, estadisticas, menu } = r, ms = Math.round(r.ms);
-    if (candidatas.length) rotosHoy++;
-    estado = {
-      ...estado,
-      fase: "listo",
-      resultado: { candidatas, ms, probadas: estadisticas.total, estadisticas, menu },
-      rotosHoy,
-    };
-    const c = candidatas[0];
-    console.log(
-      c
-        ? `  ✔ Roto en ${ms} ms → ${c.rotores.join("-")} ${c.posiciones} [${c.clavijero || "sin cables"}]: ${c.mensaje}`
-        : `  ✘ Sin candidatas (${ms} ms)`
-    );
-  });
-  hilo.once("error", (e) => {
-    console.error("La Bombe falló:", e);
-    if (estado.id === id) estado = { ...estado, fase: "error", error: String(e.message || e) };
-  });
+  const id = ++ultimoId;
+  buzon.push({ id, cifrado, creado: new Date().toISOString() });
+  if (buzon.length > MAX_BUZON) buzon.splice(0, buzon.length - MAX_BUZON);   // se van los más viejos
   return id;
 }
 
@@ -95,8 +69,12 @@ function leerCuerpo(req, limite = 10_000) {
 async function servirArchivo(req, res) {
   let ruta = decodeURIComponent(new URL(req.url, "http://x").pathname);
   if (ruta === "/") ruta = "/celular.html";
-  const archivo = path.resolve(RAIZ_WEB, "." + ruta);
-  if (!archivo.startsWith(RAIZ_WEB + path.sep)) return json(res, 403, { error: "No" });  // nada fuera de web/
+  let raiz = RAIZ_WEB;
+  for (const [prefijo, carpeta] of Object.entries(CARPETAS)) {
+    if (ruta.startsWith(prefijo)) { raiz = carpeta; ruta = ruta.slice(prefijo.length - 1); break; }
+  }
+  const archivo = path.resolve(raiz, "." + ruta);
+  if (!archivo.startsWith(raiz + path.sep)) return json(res, 403, { error: "No" });  // nada fuera de web/ y bombe/
   try {
     const contenido = await readFile(archivo);
     res.writeHead(200, {
@@ -111,15 +89,22 @@ async function servirArchivo(req, res) {
 
 // ---------- Rutas ----------
 const servidor = http.createServer(async (req, res) => {
-  const ruta = new URL(req.url, "http://x").pathname;
+  const url = new URL(req.url, "http://x"), ruta = url.pathname;
 
   try {
     if (req.method === "GET" && ruta === "/api/config") {
-      return json(res, 200, { crib: CRIB });
+      return json(res, 200, { crib: CRIB, direcciones: direccionesLocales() });
     }
 
-    if (req.method === "GET" && ruta === "/api/estado") {
-      return json(res, 200, { ...estado, rotosHoy, direcciones: direccionesLocales() });
+    if (req.method === "GET" && ruta === "/api/mensajes") {
+      if (url.searchParams.has("ultimo")) return json(res, 200, { ultimoId });
+      const desde = Number(url.searchParams.get("desde")) || 0;
+      // ultimoId va también aquí: si el servidor se reinició, la pantalla lo nota (ultimoId < desde).
+      return json(res, 200, {
+        mensajes: buzon.filter((m) => m.id > desde).slice(0, 20),
+        direcciones: direccionesLocales(),
+        ultimoId,
+      });
     }
 
     if (req.method === "POST" && ruta === "/api/interceptar") {
@@ -128,8 +113,9 @@ const servidor = http.createServer(async (req, res) => {
       if (!/^[A-Z]+$/.test(limpio) || limpio.length <= CRIB.length || limpio.length > 300) {
         return json(res, 400, { error: "Cifrado no válido" });
       }
-      console.log(`\n📡 Interceptado (${limpio.length} letras): ${limpio}`);
-      return json(res, 200, { ok: true, id: interceptar(limpio) });
+      const id = interceptar(limpio);
+      console.log(`📡 Interceptado #${id} (${limpio.length} letras)`);
+      return json(res, 200, { ok: true, id });
     }
 
     if (req.method === "GET") return servirArchivo(req, res);

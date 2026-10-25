@@ -1,5 +1,5 @@
 // nube.js — buzón de mensajes en Supabase (API REST directa, sin librerías).
-// El celular inserta el texto cifrado; la pantalla de la laptop lee el último.
+// El celular inserta el texto cifrado; la pantalla de la laptop lee los nuevos, en orden.
 import { CONFIG } from "./config.js";
 
 const tabla = () => `${CONFIG.supabaseUrl.replace(/\/$/, "")}/rest/v1/mensajes`;
@@ -33,6 +33,16 @@ export async function ultimoMensaje() {
   if (!r.ok) throw new Error(`Supabase ${r.status}: ${await r.text()}`);
   const [m] = await r.json();
   return m ?? null;
+}
+
+// Los mensajes que llegaron después de `id`, en orden de llegada (máximo 20 por consulta).
+export async function mensajesDesde(id) {
+  const r = await fetch(`${tabla()}?select=id,cifrado,creado&id=gt.${Number(id) || 0}&order=id.asc&limit=20`, {
+    headers: cabeceras(),
+    cache: "no-store",
+  });
+  if (!r.ok) throw new Error(`Supabase ${r.status}: ${await r.text()}`);
+  return r.json();
 }
 
 export async function probarConexion() {

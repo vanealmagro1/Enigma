@@ -39,6 +39,7 @@
   .derecha b { color: var(--texto); font-weight: 600; }
   .punto { display: inline-block; width: .8em; height: .8em; border-radius: 50%; background: var(--ok); margin-right: .4em; vertical-align: -.05em; }
   .punto.no { background: var(--acento); }
+  .derecha .en-cola, .derecha .en-cola b { color: var(--acento); font-weight: 600; }
 
   main { flex: 1; position: relative; }
   .escena {
@@ -207,6 +208,7 @@
   <div class="derecha">
     <div><span class="punto no" id="punto"></span><span id="conexion">conectando…</span></div>
     <div>Mensajes rotos hoy: <b id="rotos">0</b></div>
+    <div class="en-cola" id="enCola" hidden></div>
   </div>
 </header>
 
@@ -337,7 +339,7 @@
 <script src="vendor/qrcode.js"></script>
 <script type="module">
 import { CONFIG } from "./config.js";
-import { detectarModo, ultimoMensaje } from "./nube.js";
+import { detectarModo, ultimoMensaje, mensajesDesde } from "./nube.js";
 
 const $ = (id) => document.getElementById(id);
 const esperar = (ms) => new Promise((ok) => setTimeout(ok, ms));
@@ -711,86 +713,120 @@ function pintarResultado(r, crib) {
   $("resCand").textContent = new Set(r.candidatas.map((x) => x.mensaje)).size;
 }
 
-// ---------- Ciclo principal: preguntarle al servidor cada medio segundo ----------
-let idVisto = null, ocupado = false, ultimoEstado = null;
-let avisarListo = null;
+// =====================================================================
+// Cola de mensajes: se atienden todos, uno por uno, en orden de llegada.
+// El buzón (servidor local o Supabase) solo guarda el texto cifrado; la Bombe corre aquí,
+// en un Web Worker, en los dos modos.
+// =====================================================================
+const RESULTADO_MIN_MS = 15000;     // cuánto se muestra un resultado si hay otros esperando
+const VOLVER_A_ESPERA_MS = 45000;   // sin mensajes nuevos, volver a la escena del QR
 
-// ---------- De dónde salen los mensajes ----------
-// Local: el servidor de Node corre la Bombe y entrega el estado listo (/api/estado).
-// Nube: Supabase solo guarda el texto cifrado; la Bombe corre aquí, en un Web Worker.
 const MODO = await detectarModo();
 const CRIB = CONFIG.crib;
-let nube = { id: null, fase: "esperando" }, ultimoIdLeido = null, rotosNube = 0, hilo = null, letraDePrueba = null;
+const cola = [];
+let ultimoLeido = null, rotos = 0, letraDePrueba = null, avisarCola = null;
 
-async function obtenerEstado() {
-  if (MODO === "local") {
-    const r = await fetch("/api/estado", { cache: "no-store" });
+const valido = (c) => /^[A-Z]+$/.test(c || "") && c.length > CRIB.length && c.length <= 300;
+
+function pintarCola() {
+  $("enCola").hidden = cola.length === 0;
+  $("enCola").innerHTML = `En cola: <b>${cola.length}</b> ${cola.length === 1 ? "mensaje" : "mensajes"}`;
+}
+
+// Lee del buzón los mensajes con id > ultimoLeido. Al abrir la página solo anota dónde va el
+// buzón, para no repetir mensajes viejos.
+async function leerBuzon() {
+  if (MODO === "nube") {
+    if (ultimoLeido === null) ultimoLeido = (await ultimoMensaje())?.id ?? 0;
+    return { mensajes: await mensajesDesde(ultimoLeido), direcciones: [] };
+  }
+  const pedir = async (consulta) => {
+    const r = await fetch("/api/mensajes?" + consulta, { cache: "no-store" });
     if (!r.ok) throw new Error("sin servidor");
     return r.json();
-  }
-  letraDePrueba ??= (await import("../bombe/bombe2.js")).letraDePrueba;
-  const m = await ultimoMensaje();
-  if (ultimoIdLeido === null) {                        // al abrir: no repetir el último mensaje
-    ultimoIdLeido = m?.id ?? 0;
-    nube = { id: ultimoIdLeido, fase: "esperando" };
-  } else if (m && m.id !== ultimoIdLeido) {
-    ultimoIdLeido = m.id;
-    if (/^[A-Z]+$/.test(m.cifrado || "") && m.cifrado.length > CRIB.length && m.cifrado.length <= 300) iniciarBombe(m);
-  }
-  return { ...nube, rotosHoy: rotosNube, direcciones: [] };
-}
-
-function iniciarBombe(m) {
-  hilo?.terminate();                                   // si llegó otro mensaje, el anterior ya no importa
-  const id = m.id;
-  nube = { id, fase: "rompiendo", cifrado: m.cifrado, crib: CRIB, letraPrueba: letraDePrueba(CRIB, m.cifrado) };
-  hilo = new Worker(new URL("./bombe-web.js", import.meta.url), { type: "module" });
-  hilo.onmessage = ({ data: r }) => {
-    if (nube.id !== id) return;
-    if (!r.ok) { nube = { ...nube, fase: "error", error: r.error }; return; }
-    if (r.candidatas.length) rotosNube++;
-    nube = {
-      ...nube,
-      fase: "listo",
-      resultado: { candidatas: r.candidatas, ms: Math.round(r.ms), probadas: r.estadisticas.total, estadisticas: r.estadisticas, menu: r.menu },
-    };
   };
-  hilo.onerror = (e) => { if (nube.id === id) nube = { ...nube, fase: "error", error: e.message || "falló la Bombe" }; };
-  hilo.postMessage({ cifrado: m.cifrado, crib: CRIB });
+  if (ultimoLeido === null) ultimoLeido = (await pedir("ultimo=1")).ultimoId ?? 0;
+  const r = await pedir("desde=" + ultimoLeido);
+  if (r.ultimoId < ultimoLeido) {                      // el servidor se reinició: empieza de cero
+    ultimoLeido = 0;
+    return pedir("desde=0");
+  }
+  return r;
 }
 
-async function preguntar() {
+async function escuchar() {
   try {
-    const e = await obtenerEstado();
-    ultimoEstado = e;
+    const { mensajes = [], direcciones = [] } = await leerBuzon();
+    for (const m of mensajes) {
+      ultimoLeido = Math.max(ultimoLeido, m.id);
+      if (valido(m.cifrado)) cola.push(m);
+    }
+    if (mensajes.length) { pintarCola(); avisarCola?.(); }
+
     $("punto").classList.remove("no");
     $("conexion").textContent = MODO === "nube" ? "escuchando (nube)" : "escuchando";
-    $("rotos").textContent = e.rotosHoy ?? 0;
-    const ip = e.direcciones?.[0];
+    const ip = direcciones[0];
     const urlVisita = MODO === "nube"
       ? (CONFIG.urlPublica || location.origin + "/")
       : ip ? `http://${ip}:${location.port || 80}/` : location.origin + "/";
     $("url").textContent = urlVisita.replace(/\/$/, "");
     pintarQR(urlVisita);
-
-    if (idVisto === null) idVisto = e.id;              // al abrir, no repetir el último mensaje
-    else if (e.id !== idVisto && !ocupado) { idVisto = e.id; correr(e); }
-
-    if (avisarListo && (e.fase === "listo" || e.fase === "error")) { avisarListo(); avisarListo = null; }
   } catch (err) {
     console.error(err);
     $("punto").classList.add("no");
     $("conexion").textContent = "sin conexión";
   }
-  setTimeout(preguntar, MODO === "nube" ? 1000 : 500);
+  setTimeout(escuchar, 1000);
 }
 
-async function correr(e) {
-  ocupado = true;
-  const listo = new Promise((ok) => {
-    if (e.fase === "listo" || e.fase === "error") ok();
-    else avisarListo = ok;
+// Atiende UN mensaje a la vez. Entre uno y otro, el resultado se queda al menos RESULTADO_MIN_MS;
+// si nadie más transmite en VOLVER_A_ESPERA_MS, vuelve la escena del QR.
+async function procesarCola() {
+  let finResultado = null;                             // cuándo apareció el último resultado
+  while (true) {
+    if (!cola.length) {
+      const falta = finResultado === null ? null : VOLVER_A_ESPERA_MS - (performance.now() - finResultado);
+      if (falta !== null && falta <= 0) { mostrar("esperando"); finResultado = null; continue; }
+      await new Promise((ok) => { avisarCola = ok; if (falta !== null) setTimeout(ok, falta); });
+      avisarCola = null;
+      continue;
+    }
+    if (finResultado !== null) {
+      const falta = RESULTADO_MIN_MS - (performance.now() - finResultado);
+      if (falta > 0) await esperar(falta);
+    }
+    const m = cola.shift();
+    pintarCola();
+    try {
+      await atender(m);
+    } catch (err) {                                    // un mensaje con problemas no detiene la cola
+      console.error(err);
+      $("errorTxt").textContent = "Error al atender el mensaje: " + (err.message || err);
+      mostrar("error");
+    }
+    finResultado = performance.now();
+  }
+}
+
+// La Bombe de UN mensaje, en su propio Worker. Nadie más lo detiene.
+function romperEnHilo(cifrado) {
+  return new Promise((ok, mal) => {
+    const hilo = new Worker(new URL("./bombe-web.js", import.meta.url), { type: "module" });
+    hilo.onmessage = ({ data: r }) => {
+      hilo.terminate();
+      if (!r.ok) return mal(new Error(r.error));
+      ok({ candidatas: r.candidatas, ms: Math.round(r.ms), probadas: r.estadisticas.total, estadisticas: r.estadisticas, menu: r.menu });
+    };
+    hilo.onerror = (e) => { hilo.terminate(); mal(new Error(e.message || "falló la Bombe")); };
+    hilo.postMessage({ cifrado, crib: CRIB });
   });
+}
+
+async function atender(m) {
+  letraDePrueba ??= (await import("../bombe/bombe2.js")).letraDePrueba;
+  const resultado = romperEnHilo(m.cifrado);           // empieza ya, mientras corren las escenas
+  const listo = resultado.then(() => {}, () => {});
+  const e = { cifrado: m.cifrado, crib: CRIB, letraPrueba: letraDePrueba(CRIB, m.cifrado) };
 
   // Estación de escucha: la señal llega letra por letra; después se revela el punto de apoyo.
   $("cintaInter").classList.remove("marcar");
@@ -810,26 +846,26 @@ async function correr(e) {
 
   mostrar("rompiendo");
   await animarBombe(e.cifrado, e.crib, 60 * 17576, listo, e.letraPrueba);
-  await listo;
 
-  const final = ultimoEstado;
-  if (final.fase === "listo" && final.resultado.candidatas.length) {
-    pintarResultado(final.resultado, final.crib);
-    mostrar("resultado");
-  } else {
-    $("errorTxt").textContent = final.error
-      ? "Error en la Bombe: " + final.error
-      : "Ninguna configuración explica el mensaje. ¿Se usaron cables en el clavijero?";
-    mostrar("error");
+  try {
+    const r = await resultado;
+    if (r.candidatas.length) {
+      rotos++;
+      $("rotos").textContent = rotos;
+      pintarResultado(r, e.crib);
+      mostrar("resultado");
+      return;
+    }
+    $("errorTxt").textContent = "Ninguna configuración explica el mensaje. ¿Se usaron cables en el clavijero?";
+  } catch (err) {
+    console.error(err);
+    $("errorTxt").textContent = "Error en la Bombe: " + err.message;
   }
-  ocupado = false;
-
-  // Si llegó otro mensaje mientras se mostraba este, se atiende enseguida.
-  await esperar(400);
-  if (ultimoEstado.id !== idVisto) { idVisto = ultimoEstado.id; correr(ultimoEstado); }
+  mostrar("error");
 }
 
-preguntar();
+escuchar();
+procesarCola();
 </script>
 </body>
 </html>
